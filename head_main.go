@@ -30,7 +30,6 @@ var (
 	CloseConnectionMsg    byte = 4
 
 	Byte0 byte = 0
-	Magic = [4]byte{0x49, 0x63, 0x65, 0x50}
 
 )
 
@@ -91,6 +90,7 @@ func main() {
 	//使用小端
 
 	requestHdr1 := []byte{
+
 		Magic[0],
 		Magic[1],
 		Magic[2],

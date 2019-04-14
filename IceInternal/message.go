@@ -4,7 +4,13 @@ import (
 	"github.com/aloxc/goice/ice"
 	"github.com/siddontang/go/sync2"
 )
+type MessageType struct {
+	//__RequestBatchMsg       byte = 1
+	//__ReplyMsg              byte = 2
+	//__ValidateConnectionMsg byte = 3
+	//__CloseConnectionMsg    byte = 4
 
+}
 //https://doc.zeroc.com/ice/3.7/the-ice-protocol/protocol-messages
 //Message Header
 //Each protocol message has a 14-byte header that is encoded as if it were the following structure:
