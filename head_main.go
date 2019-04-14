@@ -107,7 +107,7 @@ func main() {
 	var buf =IceInternal.NewIceBuff(rw)
 	buf.Write(requestHdr1) // 18字节
 	buf.Write(utils.IntToBytes(69))
-	buf.Write(utils.IntToBytes(1))
+	buf.Write(utils.IntToBytes(8))
 	identity := ice.Identity{
 		Name:"HelloIce",
 	}

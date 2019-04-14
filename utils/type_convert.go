@@ -22,4 +22,6 @@ func BytesToInt(b []byte) int {
 
 	return int(x)
 }
-
+func IntToByte(i int) byte{
+	return uint8(i)
+}

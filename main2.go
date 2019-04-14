@@ -102,83 +102,20 @@ func main() {
 		__Protocol__EncodingMinor,
 		__RequestMsg,
 		1} // Compression status. 0：不支持压缩，1：支持压缩，2：已经压缩
+	//还要设置压缩位，见requestHdr里面关于压缩位设置。如果压缩的话，第10位设置为2，并且11 12 13 14设置为压缩后的长度。
 
 	var facet string
 	var buf = IceInternal.NewIceBuff(rw)
-	buf.Write(requestHdr1) // 18字节
-	buf.Write(utils.IntToBytes(69))
-	buf.Write(utils.IntToBytes(1))
-	identity := ice.Identity{
-		Name: "HelloIce",
-	}
-	buf.WriteStr(identity.Name)     //18+1+8=27
-	buf.WriteStr(identity.Category) //27+1=28
+	var identity ice.Identity
+	var context map[string]string
+	var mode,pmj,pmn,emj,emn,zip,rmsg byte
+	var requestId,size int
+	var operator string
+	var head ,data []byte
 
-	if len(facet) == 0 {
-		buf.WriteByte(0) //28+1=29
-	} else {
-		facets := []string{facet}
-		buf.WriteStringArray(facets)
-	}
-	operator := "ice_isA"
-	buf.WriteStr(operator) //29+1+7=37
-	var mode byte = 1
-	buf.WriteByte(mode) //37+1=38
-	context := make(map[string]string)
-	buf.WriteStringMap(context) //38+1=39
-	//buf.WriteByte(0)//39+1=40
-	//buf.WriteByte(0)//40+1=41
-	//buf.WriteByte(0)//41+1=42
-	//buf.WriteByte(0)//42+1=43
-	buf.Write(utils.IntToBytes(30))
-
-	buf.WriteByte(1) //encoding major 43+1=44
-	buf.WriteByte(1) //encoding minor 44+1=45
-
-	buf.WriteStr("::service::HelloService") //45+1+23=69
-
-	//数据整形 java 中 BasicStream.endWriteEncaps方法，大约344行，写此后（39位后的）的数据长度，总数据长度减去39
-	//还要设置压缩位，见requestHdr里面关于压缩位设置。如果压缩的话，第10位设置为2，并且11 12 13 14设置为压缩后的长度。
-
-	//需要重写requestId，到15 16 17 18 这四位 对应java中 ConnectionI的sendAsyncRequest方法，大约是386行
-
-	buf.Flush()
-
-	var head = make([]byte, 14) //先读取头
-	size, err := rw.Read(head)
-	var __Magic = [4]byte{}
-	__Magic[0] = head[0]
-	__Magic[1] = head[1]
-	__Magic[2] = head[2]
-	__Magic[3] = head[3]
-	pmj := head[4]
-	pmn := head[5]
-	emj := head[6]
-	emn := head[7]
-	rmsg := head[8]
-	zip := head[9]
-	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n", size, utils.BytesToInt(head[10:]), utils.BytesToInt(head[10:]))
-	for i, v := range __Magic {
-		fmt.Printf("__Magic[%d]=%d\n", i, v)
-	}
-
-	fmt.Printf("协议版本major = %d,minor = %d\n", pmj, pmn)
-	fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
-	fmt.Printf("msg = %d\n", rmsg)
-	fmt.Printf("压缩标示 = %d\n", zip)
-	fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:]))
-
-	var data = make([]byte, 40) //先读取头
-	size, err = rw.Read(data)
-	requestId := utils.BytesToInt(data[0:4])
-	fmt.Printf("请求ID = %d\n", requestId)
-	fmt.Println("================")
-
-	time.Sleep(1 * time.Second)
-
-	buf.Write(requestHdr1) // 18字节
-	buf.Write(utils.IntToBytes(49))
-	buf.Write(utils.IntToBytes(2))
+	buf.Write(requestHdr1) // 10字节
+	buf.Write(utils.IntToBytes(69)) //size 10 +4 = 14
+	buf.Write(utils.IntToBytes(1)) //requestId 14+4=18
 	identity = ice.Identity{
 		Name: "HelloIce",
 	}
@@ -191,6 +128,75 @@ func main() {
 		facets := []string{facet}
 		buf.WriteStringArray(facets)
 	}
+	operator = "ice_isA"
+	buf.WriteStr(operator) //29+1+7=37
+	mode = 1
+	buf.WriteByte(mode) //37+1=38
+	context = make(map[string]string)
+	buf.WriteStringMap(context) //38+1=39
+	//数据整形 java 中 BasicStream.endWriteEncaps方法，大约344行，写此后（39位后的）的数据长度，总数据长度减去39
+	buf.Write(utils.IntToBytes(30))//修正数据长度，是总长度减去写完context后的长度 39 +4 = 43
+
+	buf.WriteByte(1) //encoding major 43+1=44
+	buf.WriteByte(1) //encoding minor 44+1=45
+
+	buf.WriteStr("::service::HelloService") //45+1+23=69
+
+
+
+
+	buf.Flush()
+
+	head = make([]byte, 14) //先读取头
+	size, err = rw.Read(head)
+	var __Magic = [4]byte{}
+	__Magic[0] = head[0]
+	__Magic[1] = head[1]
+	__Magic[2] = head[2]
+	__Magic[3] = head[3]
+	pmj = head[4]
+	pmn = head[5]
+	emj = head[6]
+	emn = head[7]
+	rmsg = head[8]
+	zip = head[9]
+	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n", size, utils.BytesToInt(head[10:]), utils.BytesToInt(head[10:]))
+	for i, v := range __Magic {
+		fmt.Printf("__Magic[%d]=%d\n", i, v)
+	}
+
+	fmt.Printf("协议版本major = %d,minor = %d\n", pmj, pmn)
+	fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
+	fmt.Printf("msg = %d\n", rmsg)
+	fmt.Printf("压缩标示 = %d\n", zip)
+	fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:]))
+
+	data = make([]byte, 40) //先读取头
+	size, err = rw.Read(data)
+	requestId = utils.BytesToInt(data[0:4])
+	fmt.Printf("请求ID = %d\n", requestId)
+	fmt.Println("================")
+
+	time.Sleep(20 * time.Second)
+
+	buf.Write(requestHdr1) // 18字节
+	buf.Write(utils.IntToBytes(49))
+	buf.Write(utils.IntToBytes(2))
+
+	identity = ice.Identity{
+		Name: "HelloIce",
+	}
+	buf.WriteStr(identity.Name)     //18+1+8=27
+	buf.WriteStr(identity.Category) //27+1=28
+
+	if len(facet) == 0 {
+		buf.WriteByte(0) //28+1=29
+	} else {
+		facets := []string{facet}
+		buf.WriteStringArray(facets)
+	}
+
+
 	operator = "sayHello"
 	buf.WriteStr(operator) //30+1+7=38
 	mode = 0
@@ -263,7 +269,7 @@ func main() {
 	fmt.Println("真实数据长度是 ", realSize)
 	data = make([]byte, lastSize ) //先读取头
 	size, err = rw.Read(data)
-	//fmt.Println("剩余数据长度 = " ,size)
+	fmt.Println("剩余数据长度 = " ,size)
 	//fmt.Printf("执行结果[]\n", string(data[:]))
 	for in,d := range data{
 		fmt.Printf("执行结果[%d][%d]\n",in, d)
