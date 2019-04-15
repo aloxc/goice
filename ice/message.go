@@ -1,7 +1,6 @@
-package IceInternal
+package ice
 
 import (
-	"github.com/aloxc/goice/ice"
 	"github.com/siddontang/go/sync2"
 )
 type MessageType struct {
@@ -34,10 +33,10 @@ type RequestData struct {
 	//一个Ice 对象具有一个特殊的接口，称为它的主接口。此外， Ice 对象还可以提供零个或更多其他接口，称为facets （面）。客户可以在某个对象的各个facets 之间进行挑选，选出它们想要使用的接口。
 	//. 每个Ice 对象都有一个唯一的对象标识（object identity）。对象标识是用于把一个对象与其他所有对象区别开来的标识值。Ice 对象模型假定对象标识是全局唯一的，也就是说，在一个Ice 通信域中，不会有两个对
 	//象具有相同的对象标识。
-	Identity  *ice.Identity   //该对象标识
+	Identity  *Identity   //该对象标识
 	Operation string          //操作名称，也就是要调用的方法名称
 	Mode      byte            //Ice::OperationMode（0= normal，2= idempotent）的字节表示
-	Context   *ice.IceContext //调用上下文
+	Context   *IceContext //调用上下文
 	Param     string          //参数
 }
 

@@ -1,4 +1,4 @@
-package IceInternal
+package ice
 
 import "sync"
 

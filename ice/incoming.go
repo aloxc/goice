@@ -1,4 +1,4 @@
-package IceInternal
+package ice
 
 type Incoming struct {
 

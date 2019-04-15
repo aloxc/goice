@@ -1,12 +1,13 @@
-package main
+package utils
 
 import (
 	"fmt"
 	"reflect"
+	"testing"
 	"unsafe"
 )
 
-func main() {
+func TestBytesToInt(t *testing.T) {
 	var b byte = 250
 	var i byte = 0
 	for i =0;i<10;i++{

@@ -1,9 +1,8 @@
-package IceInternal
+package ice
 
 import (
 	"bufio"
 	"fmt"
-	"github.com/aloxc/goice/ice"
 	"github.com/aloxc/goice/utils"
 	"net"
 )
@@ -43,17 +42,19 @@ func (this *Connection) init() {
 	var facet string
 	rw := bufio.NewReadWriter(bufio.NewReader(this), bufio.NewWriter(this))
 	var buf = NewIceBuff(rw)
-	var identity ice.Identity
+	var identity Identity
 	var context map[string]string
-	var mode, pmj, pmn, emj, emn, zip, rmsg byte
-	var requestId, size int
+	var mode byte
+	//var pmj, pmn, emj, emn, zip, rmsg byte
+	//var requestId int
+	var size int
 	var operator string
 	var head, data []byte
 	var err error
 	buf.Write(requestHdr)          // 10字节
 	buf.Write(utils.IntToBytes(69)) //size 10 +4 = 14
 	buf.Write(utils.IntToBytes(1))  //requestId 14+4=18
-	identity = ice.Identity{
+	identity = Identity{
 		Name: "HelloIce",
 	}
 	buf.WriteStr(identity.Name)     //18+1+8=27
@@ -85,6 +86,7 @@ func (this *Connection) init() {
 	head = make([]byte, 14) //先读取头
 	size, err = rw.Read(head)
 	if err != nil{
+		fmt.Println(size)
 		panic(err)
 	}
 	var __Magic = [4]byte{}
@@ -92,26 +94,26 @@ func (this *Connection) init() {
 	__Magic[1] = head[1]
 	__Magic[2] = head[2]
 	__Magic[3] = head[3]
-	pmj = head[4]
-	pmn = head[5]
-	emj = head[6]
-	emn = head[7]
-	rmsg = head[8]
-	zip = head[9]
-	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n", size, utils.BytesToInt(head[10:]), utils.BytesToInt(head[10:]))
-	for i, v := range __Magic {
-		fmt.Printf("__Magic[%d]=%d\n", i, v)
-	}
-
-	fmt.Printf("协议版本major = %d,minor = %d\n", pmj, pmn)
-	fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
-	fmt.Printf("msg = %d\n", rmsg)
-	fmt.Printf("压缩标示 = %d\n", zip)
-	fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:]))
+	//pmj = head[4]
+	//pmn = head[5]
+	//emj = head[6]
+	//emn = head[7]
+	//rmsg = head[8]
+	//zip = head[9]
+	//fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n", size, utils.BytesToInt(head[10:]), utils.BytesToInt(head[10:]))
+	//for i, v := range __Magic {
+	//	fmt.Printf("__Magic[%d]=%d\n", i, v)
+	//}
+	//
+	//fmt.Printf("协议版本major = %d,minor = %d\n", pmj, pmn)
+	//fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
+	//fmt.Printf("msg = %d\n", rmsg)
+	//fmt.Printf("压缩标示 = %d\n", zip)
+	//fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:]))
 
 	data = make([]byte, 40) //先读取头
 	size, err = rw.Read(data)
-	requestId = utils.BytesToInt(data[0:4])
-	fmt.Printf("请求ID = %d\n", requestId)
-	fmt.Println("================")
+	//requestId = utils.BytesToInt(data[0:4])
+	//fmt.Printf("请求ID = %d\n", requestId)
+	//fmt.Println("================")
 }

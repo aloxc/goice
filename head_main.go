@@ -4,7 +4,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/aloxc/goice/IceInternal"
 	"github.com/aloxc/goice/ice"
 	"github.com/aloxc/goice/utils"
 	"net"
@@ -33,7 +32,7 @@ var (
 
 )
 
-func main() {
+func main1() {
 	var remoteAddress, _ = net.ResolveTCPAddr("tcp4", "127.0.0.1:1888") //生成一个net.TcpAddr对像。
 	var conn, err = net.DialTCP("tcp4", nil, remoteAddress)             //传入协议，本机地址（传了nil），远程地址，获取连接。
 	if err != nil { //如果连接失败。则返回。
@@ -88,6 +87,7 @@ func main() {
 	// + ::service::HelloService = 45 + 1 + 23 = 69
 	//为什么头会改变了呢
 	//使用小端
+	var Magic = []byte{0x49, 0x63, 0x65, 0x50}
 
 	requestHdr1 := []byte{
 
@@ -104,7 +104,7 @@ func main() {
 
 
 	var facet string
-	var buf =IceInternal.NewIceBuff(rw)
+	var buf =ice.NewIceBuff(rw)
 	buf.Write(requestHdr1) // 18字节
 	buf.Write(utils.IntToBytes(69))
 	buf.Write(utils.IntToBytes(8))

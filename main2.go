@@ -5,20 +5,19 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/aloxc/goice/IceInternal"
 	"github.com/aloxc/goice/ice"
 	"github.com/aloxc/goice/utils"
 	"time"
 )
 
-func main() {
-	var conn, err = IceInternal.Connect("tcp4", "127.0.0.1:1888")
+func main2() {
+	var conn, err =  ice.Connect("tcp4", "127.0.0.1:1888")
 	if err != nil { //如果连接失败。则返回。
 		fmt.Println("连接出错：", err)
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var facet string
-	var buf = IceInternal.NewIceBuff(rw)
+	var buf = ice.NewIceBuff(rw)
 	var context map[string]string
 	var mode,pmj,pmn,emj,emn,zip,rmsg byte
 	var requestId,size int
@@ -27,8 +26,8 @@ func main() {
 	//time.Sleep(20 * time.Second)
 
 	buf.WriteHead()
-	buf.WriteContentLength(49)
-	buf.WriteRequestId()
+	buf.WriteTotalSize(49)
+	buf.WriteRequestId(3)
 	buf.WriteIdentity(ice.NewIdentity("HelloIce",""))
 	buf.WriteFacet(facet)
 	buf.WriteOperator("sayHello")
@@ -38,7 +37,7 @@ func main() {
 	buf.WriteContext(context) //39+1=40
 	//TODO 需要设置实际长度,这个值是总数据长度减去设置完context后的长度
 	buf.WriteRealSize(9)
-	buf.WriteEncodingVersion()
+	buf.WriteEncodingVersion(ice.GetDefaultEncodingVersion())
 	buf.WriteStr("aa") //46+1+2=49
 	buf.Flush()
 
@@ -88,7 +87,7 @@ func main() {
 		dataSizeData := make([]byte, sizeDefine)
 		size, err = rw.Read(dataSizeData)
 		realSize = utils.BytesToInt(dataSizeData[1:])
-		fmt.Println("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
+		fmt.Println("长度超过254，读取下这个 -1 是什么 %V", dataSizeData[0])
 	}
 	lastSize = lastSize - sizeDefine
 	fmt.Println("计算数据长度是 ", lastSize)
