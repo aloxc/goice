@@ -2,7 +2,9 @@ package ice
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/aloxc/goice/utils"
+	"reflect"
 )
 
 type IceBuffer struct {
@@ -164,6 +166,7 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 4 //整形后的数据长度（int = 4 ）
 	total += 1 //encoding major
 	total += 1 //encoding manor
+	fmt.Println(reflect.TypeOf(params))
 	switch params.(type) {
 	case string:
 		{
@@ -175,8 +178,27 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 			}
 			total += len(params.(string)) // params本身长度
 		}
+	case bool:
+		total += 1
+	case int8:
+		total += 1
+	case int16:
+		total += 2
 	case int:
-		total += 4;
+		total += 4
+	case int32:
+		total += 4
+	case int64:
+		total += 8
+	case float32:
+		total += 4
+	case float64:
+		total += 8
+	case Article:
+		total += 1
+		total += 1
+		total += len(params.(Article).Item)
+		total += 4
 	}
 
 	return total, total - end

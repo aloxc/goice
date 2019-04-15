@@ -62,8 +62,27 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 	switch this.Params.(type) {
 	case string:
 		buf.WriteStr(this.Params.(string))
+	case bool:
+		buf.Write(utils.BoolToBytes(this.Params.(bool)))
+	case int8:
+		buf.Write(utils.Int8ToBytes(this.Params.(int8)))
+	case int16:
+		buf.Write(utils.Int16ToBytes(this.Params.(int16)))
 	case int:
-		buf.Write(utils.IntToBytes(this.Params.(int)))
+		buf.Write(utils.IntToBytes(int(this.Params.(int))))
+	case int32:
+		buf.Write(utils.Int32ToBytes(this.Params.(int32)))
+	case int64:
+		buf.Write(utils.Int64ToBytes(this.Params.(int64)))
+	case float32:
+		buf.Write(utils.Float32ToByte(this.Params.(float32)))
+	case float64:
+		buf.Write(utils.Float64ToByte(this.Params.(float64)))
+	case Article:
+		buf.WriteStr(this.Params.(Article).Item)
+		buf.Write(utils.Int32ToBytes(this.Params.(Article).Id))
+
+
 	}
 	buf.Flush()
 
@@ -109,14 +128,48 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 	lastSize = lastSize - 4 - 1 - 1 //4:整形后面包括整形长度，1：主编码版本 ，1：副编码版本
 	//fmt.Printf("编码版本major = %d,minor = %d\n", _encodingMajor, _encodingMinor)
 	//fmt.Println("最终数据长度及数据 的长度", lastSize)
-	if responseType == ResponseType_Int{
+
+	if responseType == ResponseType_Bool {
+		data := make([]byte, 1)
+		size, err = rw.Read(data)
+		return data
+	}else if responseType == ResponseType_Int8 {
+		data := make([]byte, 1)
+		size, err = rw.Read(data)
+		return data
+	}else if responseType == ResponseType_Int16 {
+		data := make([]byte, 2)
+		size, err = rw.Read(data)
+		//for key, value := range data {
+		//	fmt.Printf("[%d][%d]\n",key,value)
+		//}
+		return data
+	}else if responseType == ResponseType_Int{
 		data := make([]byte, 4)
+		size, err = rw.Read(data)
+
+		return data
+	}else if responseType == ResponseType_Int64{
+		data := make([]byte, 8)
+		size, err = rw.Read(data)
+		return data
+	}else if responseType == ResponseType_Float32{
+		data := make([]byte, 4)
+		size, err = rw.Read(data)
+		return data
+	}else if responseType == ResponseType_Float64 {
+		data := make([]byte, 8)
+		size, err = rw.Read(data)
+		return data
+	}else if responseType == ResponseType_Article{
+		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		return data
 	}
 	sizeDefine := 0
 
 	//realSize := 0
+	//字符串的
 	if lastSize <= 255 {
 		//读取一个字节
 		sizeDefine = 1

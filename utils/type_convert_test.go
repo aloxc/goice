@@ -18,4 +18,8 @@ func TestBytesToInt(t *testing.T) {
 	//bytes := utils.IntToBytes(i8)
 	fmt.Println(reflect.TypeOf(byte(i8)))
 	fmt.Println(unsafe.Sizeof(byte(i8)))
+	var f float32 = 234.43
+	fmt.Println(f)
+	bytes := Float32ToByte(f)
+	fmt.Println(ByteToFloat32(bytes))
 }
