@@ -9,13 +9,14 @@ import (
 
 type IceBuffer struct {
 	*bufio.ReadWriter
+	Out *Outgoing
+	In *Incoming
 }
 var requestId int32 = 2
 func NewIceBuff(rw *bufio.ReadWriter) *IceBuffer {
 	return &IceBuffer{
-		rw,
+		ReadWriter:rw,
 	}
-
 }
 
 func (this *IceBuffer) WriteFacet(facet string) {
