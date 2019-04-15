@@ -17,9 +17,6 @@ func main() {
 		fmt.Println("连接出错：", err)
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-
-
 	var facet string
 	var buf = IceInternal.NewIceBuff(rw)
 	var context map[string]string

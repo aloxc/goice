@@ -123,3 +123,47 @@ func (this*IceBuffer)WriteHead(){
 //还要设置压缩位，见requestHdr里面关于压缩位设置。如果压缩的话，第10位设置为2，并且11 12 13 14设置为压缩后的长度。
 	this.Write(requestHead)//10字节
 }
+
+//TODO 无參 和多参还没看怎么处理的，当前就是一个参数的
+func (this*IceBuffer)Prepare(identity *ice.Identity,facet,operator,params string,context map[string]string)(total,real int) {
+	total = 0
+	total += 10//head
+	total += 4//total(int = 4)
+	total += 4//requestId(int = 4)
+	total += 1//identity.Name的长度(byte = 1)
+	total += len(identity.Name)//identity.Name本身(len(identity.Name))
+	total += 1//identity.Category的长度(byte = 1)
+	if len(identity.Category) != 0 {
+		total += len(identity.Category) //identity.Name本身(len(identity.Category))
+	}
+	if len(facet) ==0 {
+		total += 1//facet的长度(byte = 1)
+	}else{
+		total += 1//facet数组的长度(byte = 1)
+		total += 1//facet数组[0]的长度(byte = 1)
+		total += len(facet)//facet数组[0]的本身(len(facet))
+	}
+	total += 1//operator的长度(byte = 1)
+	total += len(operator)//operator数组的本身(len(operator))
+	total += 1//mode的长度(byte = 1)
+	context = make(map[string]string)
+	total += 1//context的长度(byte = 1)
+	end := total
+	total += 4//整形后的数据长度（int = 4 ）
+	total += 1 //encoding major
+	total += 1 //encoding manor
+	if len(params) > 254{
+		total += 1 // -1 超过254 就设置个-1和int
+		total += 4 //int
+	}else {
+
+		total += 1 //param的长度
+	}
+	total += len(params) // params本身长度
+	return total,total - end
+}
+
+//准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
+func (this*IceBuffer)DoRequest(total,real int) {
+
+}
