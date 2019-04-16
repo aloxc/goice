@@ -40,7 +40,6 @@ func ReadConfig() {
 	warnClientSize, err := cfg.Int("default." + WarnClientSize)
 	maxClientSize, err := cfg.Int("default." + MaxClientSize)
 	compress, err := cfg.Bool("default." + Compress)
-	fmt.Println(compress, operateTimeout)
 	deConfig := make(map[string]interface{})
 	deConfig[OperateTimeout] = operateTimeout
 	deConfig[ConnectTimeout] = connectTimeout
@@ -69,7 +68,6 @@ func ReadConfig() {
 	if cstr != "" {
 		inConfig[Compress], _ = strconv.ParseBool(cstr)
 	}
-	//fmt.Println("operateTimeout:",operateTimeout)
 	servers, err := cfg.List("servers")
 	for _, server := range servers {
 		mp := server.(map[string]interface{})
@@ -91,7 +89,6 @@ func ReadConfig() {
 				case string:
 					mp2[k2] = n2.(string)
 				}
-				//fmt.Println(k2)
 
 			}
 			for ink, inv := range inConfig {
@@ -107,7 +104,6 @@ func ReadConfig() {
 			ConfigMap[k1] = mp2
 		}
 	}
-	fmt.Println(ConfigMap)
 }
 
 // Config represents a configuration with convenient access methods.

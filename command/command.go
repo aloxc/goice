@@ -1,11 +1,9 @@
 package command
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/aloxc/goice/config"
-	"github.com/dimiro1/banner"
-	"github.com/mattn/go-colorable"
+	_ "github.com/dimiro1/banner/autoload"
 	"os"
 )
 
@@ -37,17 +35,9 @@ type Command struct {
 }
 
 func (this *Command) Run() {
-	showBanner()
 	if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-help" || os.Args[1] == "help") {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
 	config.ReadConfig()
-}
-
-func showBanner() {
-	isEnabled := true
-	isColorEnabled := true
-	banner.Init(colorable.NewColorableStdout(), isEnabled, isColorEnabled, bytes.NewBufferString("My Custom Banner"))
-
 }

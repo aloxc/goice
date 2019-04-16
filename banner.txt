@@ -1,1 +1,8 @@
-goice
+
+ ██████╗  ██████╗ {{ .AnsiBackground.BrightBlue }}██╗{{ .AnsiColor.Black }} ██████╗███████╗
+██╔════╝ ██╔═══██╗{{ .AnsiBackground.BrightBlue }}██║{{ .AnsiColor.Black }}██╔════╝██╔════╝
+██║  ███╗██║   ██║{{ .AnsiBackground.BrightBlue }}██║{{ .AnsiColor.Black }}██║     █████╗
+██║   ██║██║   ██║{{ .AnsiBackground.BrightBlue }}██║{{ .AnsiColor.Black }}██║     ██╔══╝
+╚██████╔╝╚██████╔╝{{ .AnsiBackground.BrightBlue }}██║{{ .AnsiColor.Black }}╚██████╗███████╗
+ ╚═════╝  ╚═════╝ {{ .AnsiBackground.BrightBlue }}╚═╝{{ .AnsiColor.Black }} ╚═════╝╚══════╝
+
