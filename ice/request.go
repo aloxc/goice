@@ -62,12 +62,14 @@ func NewIceRequest(identity *Identity, mode OperatorMode, operator string, conte
 }
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
-func (this *IceRequest) DoRequest(responseType ResponseType) []byte {
+func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
+	var lastSize int
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
 	var conn, err = Connect("tcp4", "127.0.0.1:1888")
 	if err != nil { //如果连接失败。则返回。
-		fmt.Println("连接出错：", err)
+		fmt.Println("连接出错：")
+		return nil, err
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var buf = NewIceBuff(rw)
@@ -116,7 +118,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) []byte {
 	head = make([]byte, 25) //先读取头
 	size, err = rw.Read(head)
 	if err != nil {
-		fmt.Println(size)
+		return nil, err
 	}
 	var __Magic = [4]byte{}
 	__Magic[0] = head[0]
@@ -136,15 +138,35 @@ func (this *IceRequest) DoRequest(responseType ResponseType) []byte {
 	//fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
 	//fmt.Printf("msg = %d\n", rmsg)
 	//fmt.Printf("压缩标示 = %d\n", zip)
-	fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:14]))
+	//fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:14]))
 	if utils.BytesToInt(head[10:14]) == size || responseType == ResponseType_Void { //void 的方法，没有返回,也就只会返回25个字节的数据
-		return nil
+		return nil, nil
 	}
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
-	//var replyStatus uint8 = head[18]
+	var replyStatus uint8 = head[18]
 	//fmt.Println("响应状态 ", replyStatus)
-	var lastSize = utils.BytesToInt(head[19:23])
+	if replyStatus == 7 { //用户异常
+		lastSize = utils.BytesToInt(head[20:24])
+		//fmt.Println("发生了异常",lastSize)
+		//fmt.Println("异常信息" ,head[19])//-1
+		//fmt.Println("异常信息" ,head[20])
+		//fmt.Println("异常信息" ,head[21])
+		//fmt.Println("异常信息" ,head[22])
+		//fmt.Println("异常信息" ,head[23])
+		//fmt.Println("异常信息" ,head[24])
+		//fmt.Println("异常信息" ,string(head[19:]))
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		userError := NewUserError(conn.RemoteAddr().String(), "", string(data), this.Params)
+		return nil, userError
+	}
+	lastSize = utils.BytesToInt(head[19:23])
 	//fmt.Println("整形后面的数据长度（包括整形4字节） ", lastSize)
 	//_encodingMajor := head[23]
 	//_encodingMinor := head[24]
@@ -155,38 +177,34 @@ func (this *IceRequest) DoRequest(responseType ResponseType) []byte {
 	if responseType == ResponseType_Bool {
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
-		return data
+		return data, nil
 	} else if responseType == ResponseType_Int8 {
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
-		return data
+		return data, nil
 	} else if responseType == ResponseType_Int16 {
 		data := make([]byte, 2)
 		size, err = rw.Read(data)
-		//for key, value := range data {
-		//	fmt.Printf("[%d][%d]\n",key,value)
-		//}
-		return data
+		return data, nil
 	} else if responseType == ResponseType_Int {
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
 
-		return data
+		return data, nil
 	} else if responseType == ResponseType_Int64 {
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
-		return data
+		return data, nil
 	} else if responseType == ResponseType_Float32 {
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
-		return data
+		return data, nil
 	} else if responseType == ResponseType_Float64 {
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
-		return data
+		return data, nil
 	}
 	sizeDefine := 0
-
 	//realSize := 0
 	//字符串的
 	if lastSize <= 255 {
@@ -194,26 +212,37 @@ func (this *IceRequest) DoRequest(responseType ResponseType) []byte {
 		sizeDefine = 1
 		dataSizeData := make([]byte, sizeDefine)
 		size, err = rw.Read(dataSizeData)
+		if err != nil {
+			return nil, err
+		}
 		//realSize = int(dataSizeData[0])
 	} else {
 		//读取一个字节-1，跟着4个字节的数据长度（int）
 		sizeDefine = 5
 		dataSizeData := make([]byte, sizeDefine)
 		size, err = rw.Read(dataSizeData)
+		if err != nil {
+			return nil, err
+		}
 		//realSize = utils.BytesToInt(dataSizeData[1:])
 		//fmt.Println("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
 	}
+	//fmt.Println("lastSize=",lastSize)
 	lastSize = lastSize - sizeDefine
-	fmt.Println("计算数据长度是 ", lastSize)
+	//fmt.Println("sizeDefine=" ,sizeDefine)
+	//fmt.Println("计算数据长度是 ", lastSize)
 	//fmt.Println("真实数据长度是 ", realSize)
 	data = make([]byte, lastSize) //先读取头
 	size, err = rw.Read(data)
+	if err != nil {
+		return nil, err
+	}
 	//fmt.Println("剩余数据长度 = " ,size)
 	//fmt.Printf("执行结果[]\n", string(data[:]))
 	//for in,d := range data{
 	//	fmt.Printf("执行结果[%d][%d]\n",in, d)
 	//}
-	return data
+	return data, nil
 
 }
 

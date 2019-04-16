@@ -7,7 +7,21 @@ import (
 	"testing"
 )
 
+func reError(err error) {
+	if err != nil {
+		switch err.(type) {
+		case *ice.UserError:
+			break
+		default:
+			panic(err)
+		}
+	}
+}
+
+var showResult = false
+
 func TestGoiceExecute(t *testing.T) {
+
 	//通过
 	method := "getArticle"
 	params := make(map[string]string)
@@ -15,12 +29,15 @@ func TestGoiceExecute(t *testing.T) {
 	params["id"] = "122"
 	req := ice.NewReqeust(method, params)
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "execute", nil, req)
-	result := request.DoRequest(ice.ResponseType_Execute)
+	result, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	json.Unmarshal(result, &response)
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
+	if showResult {
+		var response ice.Response
+		json.Unmarshal(result, &response)
+		fmt.Println(response)
+		fmt.Println("请求结果", ret)
+	}
 }
 func TestGoiceExecuteUsingContext(t *testing.T) {
 	//通过
@@ -34,12 +51,15 @@ func TestGoiceExecuteUsingContext(t *testing.T) {
 
 	req := ice.NewReqeust(method, params)
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "execute", context, req)
-	result := request.DoRequest(ice.ResponseType_Execute)
+	result, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	json.Unmarshal(result, &response)
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
+	if showResult {
+		var response ice.Response
+		json.Unmarshal(result, &response)
+		fmt.Println(response)
+		fmt.Println("请求结果", ret)
+	}
 }
 
 func TestGoiceGetStringArticle(t *testing.T) {
@@ -50,12 +70,15 @@ func TestGoiceGetStringArticle(t *testing.T) {
 	params["id"] = "122"
 	req := ice.NewReqeust(method, params)
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "execute", nil, req)
-	result := request.DoRequest(ice.ResponseType_Execute)
+	result, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	json.Unmarshal(result, &response)
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
+	if showResult {
+		var response ice.Response
+		json.Unmarshal(result, &response)
+		fmt.Println(response)
+		fmt.Println("请求结果", ret)
+	}
 }
 func TestGoiceGetStringArticleUsingContext(t *testing.T) {
 	//通过
@@ -69,24 +92,30 @@ func TestGoiceGetStringArticleUsingContext(t *testing.T) {
 
 	req := ice.NewReqeust(method, params)
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "execute", context, req)
-	result := request.DoRequest(ice.ResponseType_Execute)
+	result, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	json.Unmarshal(result, &response)
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
+	if showResult {
+		var response ice.Response
+		json.Unmarshal(result, &response)
+		fmt.Println(response)
+		fmt.Println("请求结果", ret)
+	}
 }
 
 func TestGoiceExecuteJson(t *testing.T) {
 	//通过
 	req := "{\"method\":\"getArticle\",\"params\":{\"item\":\"free\",\"id\":122222}}"
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "executeJson", nil, req)
-	result := request.DoRequest(ice.ResponseType_Execute_JSON)
+	result, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	json.Unmarshal(result, &response)
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
+	if showResult {
+		var response ice.Response
+		json.Unmarshal(result, &response)
+		fmt.Println(response)
+		fmt.Println("请求结果", ret)
+	}
 }
 func TestGoiceExecuteJsonUsingContext(t *testing.T) {
 	//通过
@@ -95,25 +124,37 @@ func TestGoiceExecuteJsonUsingContext(t *testing.T) {
 
 	req := "{\"method\":\"getArticle\",\"params\":{\"item\":\"free\",\"id\":13333}}"
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "executeJson", context, req)
-	result := request.DoRequest(ice.ResponseType_Execute_JSON)
+	result, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	json.Unmarshal(result, &response)
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
+	if showResult {
+		var response ice.Response
+		json.Unmarshal(result, &response)
+		fmt.Println(response)
+		fmt.Println("请求结果", ret)
+	}
 }
 
 func TestGoiceExecuteException(t *testing.T) {
 	//通过
 	req := "{\"method\":\"exception\",\"params\":{\"item\":\"free\",\"id\":122222}}"
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "executeJson", nil, req)
-	result := request.DoRequest(ice.ResponseType_Execute_JSON)
+	_, err := request.DoRequest(ice.ResponseType_Execute)
+	reError(err)
+}
+
+func TestGoiceExecuteLargeString(t *testing.T) {
+	//通过
+	method := "getLargeString"
+	params := make(map[string]string)
+	params["a"] = "a"
+	req := ice.NewReqeust(method, params)
+
+	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "execute", nil, req)
+	result, err := request.DoRequest(ice.ResponseType_Execute_JSON)
+	reError(err)
 	ret := string(result)
-	var response ice.Response
-	err := json.Unmarshal(result, &response)
-	if err != nil {
-		fmt.Println("异常了", err)
+	if showResult {
+		fmt.Println("请求结果", ret)
 	}
-	fmt.Println(response)
-	fmt.Println("请求结果", ret)
 }
