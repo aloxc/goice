@@ -335,20 +335,6 @@ func TestGoiceBuildHouseFromUsingContext(t *testing.T){
 	result := request.DoRequest(ice.ResponseType_Int)
 	fmt.Println("请求结果",utils.BytesToInt(result))
 }
-func TestGoiceGetArticle(t *testing.T){
-	art := ice.Article{
-		Item:"free",
-		Id:123,
-	}
-	request := ice.NewIceRequest(ice.NewIdentity("HelloIce",""),ice.OperatorModeNormal,"getArticle",nil,art)
-	result := request.DoRequest(ice.ResponseType_Article)
-	fmt.Println("请求结果",utils.BytesToInt(result))
-}
-func TestGoiceGetArticleUsingContext(t *testing.T){
-	request := ice.NewIceRequest(ice.NewIdentity("HelloIce",""),ice.OperatorModeNormal,"getArticle",nil,123321)
-	result := request.DoRequest(ice.ResponseType_Article)
-	fmt.Println("请求结果",utils.BytesToInt(result))
-}
 func TestGoiceExecute(t *testing.T){
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce",""),ice.OperatorModeNormal,"execute",nil,123321)
 	result := request.DoRequest(ice.ResponseType_Int)

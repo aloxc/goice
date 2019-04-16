@@ -194,12 +194,7 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 		total += 4
 	case float64:
 		total += 8
-	case Article:
-		total += 1
-		total += 1
-		total += len(params.(Article).Item)
-		total += 4
 	}
-
+	fmt.Println(total,end)
 	return total, total - end
 }
