@@ -1,4 +1,5 @@
 package ice
+
 var magic = []byte{0x49, 0x63, 0x65, 0x50}
 var msgType byte = 0
 var requestHead = []byte{magic[0],
@@ -23,9 +24,10 @@ var connHead = []byte{magic[0],
 	GetDefaultProtocalEncodingVersion().Minor,
 	msgType,
 	1}
-func GetHead() *[]byte{
+
+func GetHead() *[]byte {
 	return &requestHead
 }
-func GetConnHead()*[]byte  {
+func GetConnHead() *[]byte {
 	return &connHead
 }

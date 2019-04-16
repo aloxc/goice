@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/aloxc/goice/utils"
 	"sync/atomic"
+	"time"
 )
 
 type Request struct {
@@ -63,6 +64,7 @@ func NewIceRequest(identity *Identity, mode OperatorMode, operator string, conte
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
 func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
+	var timeout int = 5
 	var lastSize int
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
@@ -110,7 +112,23 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 		buf.WriteStringMap(request.Params)
 	}
 	buf.Flush()
+	fmt.Println("请求已经发送")
+	//var timeoutCh chan int
+	quit := make(chan bool)
 
+	//go func() {
+	//	for  {
+	//		select {
+	//		case <-time.After(time.Duration(timeout) * time.Second):
+	//			//return nil,error("aa")
+	//			quit<-true
+	//		}
+	//	}
+	//}()
+	//if <-quit{
+	//	timeoutError := NewTimeoutError(conn.RemoteAddr().String(), "", timeout,this.Params)
+	//	return nil, timeoutError
+	//}
 	//var pmj,pmn,emj,emn,zip,rmsg byte
 	//var requestId int
 	var size int
@@ -145,8 +163,21 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
 	var replyStatus uint8 = head[18]
-	//fmt.Println("响应状态 ", replyStatus)
-	if replyStatus == 7 { //用户异常
+	fmt.Println("响应状态 ", replyStatus)
+	switch replyStatus {
+	case 1:
+		fmt.Println("ice客户端异常")
+	case 2:
+	case 3:
+		fmt.Println("facet不存在")
+		return nil, nil
+	case 4:
+		fmt.Println("方法不存在")
+		return nil, nil
+	case 5:
+		fmt.Println("ice服务端异常")
+		return nil, nil
+	case 7: //用户异常
 		lastSize = utils.BytesToInt(head[20:24])
 		//fmt.Println("发生了异常",lastSize)
 		//fmt.Println("异常信息" ,head[19])//-1
@@ -165,6 +196,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 		data = append([]byte{head[24]}, data...)
 		userError := NewUserError(conn.RemoteAddr().String(), "", string(data), this.Params)
 		return nil, userError
+
 	}
 	lastSize = utils.BytesToInt(head[19:23])
 	//fmt.Println("整形后面的数据长度（包括整形4字节） ", lastSize)

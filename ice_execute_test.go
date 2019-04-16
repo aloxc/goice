@@ -18,7 +18,7 @@ func reError(err error) {
 	}
 }
 
-var showResult = false
+var showResult = true
 
 func TestGoiceExecute(t *testing.T) {
 
@@ -133,14 +133,6 @@ func TestGoiceExecuteJsonUsingContext(t *testing.T) {
 		fmt.Println(response)
 		fmt.Println("请求结果", ret)
 	}
-}
-
-func TestGoiceExecuteException(t *testing.T) {
-	//通过
-	req := "{\"method\":\"exception\",\"params\":{\"item\":\"free\",\"id\":122222}}"
-	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "executeJson", nil, req)
-	_, err := request.DoRequest(ice.ResponseType_Execute)
-	reError(err)
 }
 
 func TestGoiceExecuteLargeString(t *testing.T) {
