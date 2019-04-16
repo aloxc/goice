@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aloxc/goice/utils"
+	"io"
 	"sync/atomic"
 	"time"
 )
@@ -12,6 +13,11 @@ import (
 type Request struct {
 	Method string
 	Params map[string]string
+}
+
+type reqeustErrorAndData struct {
+	err  error
+	data []byte
 }
 
 //构造用于execute方法的请求
@@ -65,7 +71,6 @@ func NewIceRequest(identity *Identity, mode OperatorMode, operator string, conte
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
 func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	var timeout int = 5
-	var lastSize int
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
 	var conn, err = Connect("tcp4", "127.0.0.1:1888")
@@ -97,7 +102,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	case int16:
 		buf.Write(utils.Int16ToBytes(this.Params.(int16)))
 	case int:
-		buf.Write(utils.IntToBytes(int(this.Params.(int))))
+		buf.Write(utils.IntToBytes(this.Params.(int)))
 	case int32:
 		buf.Write(utils.Int32ToBytes(this.Params.(int32)))
 	case int64:
@@ -114,29 +119,25 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	buf.Flush()
 	fmt.Println("请求已经发送")
 	//var timeoutCh chan int
-	quit := make(chan bool)
 
-	//go func() {
-	//	for  {
-	//		select {
-	//		case <-time.After(time.Duration(timeout) * time.Second):
-	//			//return nil,error("aa")
-	//			quit<-true
-	//		}
-	//	}
-	//}()
-	//if <-quit{
-	//	timeoutError := NewTimeoutError(conn.RemoteAddr().String(), "", timeout,this.Params)
-	//	return nil, timeoutError
-	//}
-	//var pmj,pmn,emj,emn,zip,rmsg byte
-	//var requestId int
-	var size int
+	errAndData := make(chan *reqeustErrorAndData)
+	go request(conn.RemoteAddr().String(), rw, responseType, this.Params, errAndData)
+	go timeoutMonitor(conn.RemoteAddr().String(), "", timeout, this.Params, errAndData)
+	ed := <-errAndData
+	return ed.data, ed.err
+
+}
+func request(address string, rw io.ReadWriter, responseType ResponseType, params interface{}, errAndData chan *reqeustErrorAndData) {
+	var size, lastSize int
 	var head, data []byte
 	head = make([]byte, 25) //先读取头
-	size, err = rw.Read(head)
+	size, err := rw.Read(head)
 	if err != nil {
-		return nil, err
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	}
 	var __Magic = [4]byte{}
 	__Magic[0] = head[0]
@@ -158,7 +159,11 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	//fmt.Printf("压缩标示 = %d\n", zip)
 	//fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:14]))
 	if utils.BytesToInt(head[10:14]) == size || responseType == ResponseType_Void { //void 的方法，没有返回,也就只会返回25个字节的数据
-		return nil, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  nil,
+			data: nil,
+		}
+		return
 	}
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
@@ -166,36 +171,129 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	fmt.Println("响应状态 ", replyStatus)
 	switch replyStatus {
 	case 1:
-		fmt.Println("ice客户端异常")
-	case 2:
-	case 3:
-		fmt.Println("facet不存在")
-		return nil, nil
-	case 4:
-		fmt.Println("方法不存在")
-		return nil, nil
-	case 5:
-		fmt.Println("ice服务端异常")
-		return nil, nil
-	case 7: //用户异常
 		lastSize = utils.BytesToInt(head[20:24])
-		//fmt.Println("发生了异常",lastSize)
-		//fmt.Println("异常信息" ,head[19])//-1
-		//fmt.Println("异常信息" ,head[20])
-		//fmt.Println("异常信息" ,head[21])
-		//fmt.Println("异常信息" ,head[22])
-		//fmt.Println("异常信息" ,head[23])
-		//fmt.Println("异常信息" ,head[24])
-		//fmt.Println("异常信息" ,string(head[19:]))
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
 			fmt.Println("读取异常信息异常")
-			return nil, err
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
 		}
 		data = append([]byte{head[24]}, data...)
-		userError := NewUserError(conn.RemoteAddr().String(), "", string(data), this.Params)
-		return nil, userError
+		errAndData <- &reqeustErrorAndData{
+			err:  NewUserError(address, "", string(data), params),
+			data: nil,
+		}
+	case 2:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
+		}
+		data = append([]byte{head[24]}, data...)
+		errAndData <- &reqeustErrorAndData{
+			err:  NewObjectNotExistsError(address, "", string(data), params),
+			data: nil,
+		}
+	case 3:
+		//TODO 添加异常处理
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
+		}
+		data = append([]byte{head[24]}, data...)
+		errAndData <- &reqeustErrorAndData{
+			err:  NewFacetNotExistsError(address, "", string(data), params),
+			data: nil,
+		}
+		return
+	case 4:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
+		}
+		data = append([]byte{head[24]}, data...)
+		errAndData <- &reqeustErrorAndData{
+			err:  NewOperatorNotExistsError(address, "", string(data), params),
+			data: nil,
+		}
+		return
+	case 5:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
+		}
+		data = append([]byte{head[24]}, data...)
+		errAndData <- &reqeustErrorAndData{
+			err:  NewIceServerError(address, "", string(data), params),
+			data: nil,
+		}
+	case 6:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
+		}
+		data = append([]byte{head[24]}, data...)
+		errAndData <- &reqeustErrorAndData{
+			err:  NewUserError(address, "", string(data), params),
+			data: nil,
+		}
+	case 7: //用户异常
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			fmt.Println("读取异常信息异常")
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
+		}
+		data = append([]byte{head[24]}, data...)
+		userUnknownError := NewUserUnknownError(address, "", string(data), params)
+		errAndData <- &reqeustErrorAndData{
+			err:  userUnknownError,
+			data: nil,
+		}
+		return
 
 	}
 	lastSize = utils.BytesToInt(head[19:23])
@@ -209,32 +307,59 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	if responseType == ResponseType_Bool {
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	} else if responseType == ResponseType_Int8 {
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	} else if responseType == ResponseType_Int16 {
 		data := make([]byte, 2)
 		size, err = rw.Read(data)
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	} else if responseType == ResponseType_Int {
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
-
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	} else if responseType == ResponseType_Int64 {
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	} else if responseType == ResponseType_Float32 {
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	} else if responseType == ResponseType_Float64 {
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
-		return data, nil
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: data,
+		}
+		return
 	}
 	sizeDefine := 0
 	//realSize := 0
@@ -245,7 +370,11 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 		dataSizeData := make([]byte, sizeDefine)
 		size, err = rw.Read(dataSizeData)
 		if err != nil {
-			return nil, err
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
 		}
 		//realSize = int(dataSizeData[0])
 	} else {
@@ -254,7 +383,11 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 		dataSizeData := make([]byte, sizeDefine)
 		size, err = rw.Read(dataSizeData)
 		if err != nil {
-			return nil, err
+			errAndData <- &reqeustErrorAndData{
+				err:  err,
+				data: nil,
+			}
+			return
 		}
 		//realSize = utils.BytesToInt(dataSizeData[1:])
 		//fmt.Println("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
@@ -267,15 +400,25 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	data = make([]byte, lastSize) //先读取头
 	size, err = rw.Read(data)
 	if err != nil {
-		return nil, err
+		errAndData <- &reqeustErrorAndData{
+			err:  err,
+			data: nil,
+		}
+		return
 	}
-	//fmt.Println("剩余数据长度 = " ,size)
-	//fmt.Printf("执行结果[]\n", string(data[:]))
-	//for in,d := range data{
-	//	fmt.Printf("执行结果[%d][%d]\n",in, d)
-	//}
-	return data, nil
-
+	errAndData <- &reqeustErrorAndData{
+		err:  err,
+		data: data,
+	}
+}
+func timeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
+	fmt.Println("启动超时监控启动")
+	<-time.After(time.Duration(timeout) * time.Second)
+	errAndData <- &reqeustErrorAndData{
+		err:  NewTimeoutError(address, operator, timeout, params),
+		data: nil,
+	}
+	fmt.Println("超时完成")
 }
 
 //写完上面的head 10字节

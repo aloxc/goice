@@ -49,6 +49,7 @@ func TestGoiceSayHelloUsingContext(t *testing.T) {
 		fmt.Println("请求结果", string(result))
 	}
 }
+
 func TestGoiceVoid(t *testing.T) {
 	//goice.vvoid() 测试成功
 	request := ice.NewIceRequest(ice.NewIdentity("HelloIce", ""), ice.OperatorModeNormal, "vvoid", nil, "")

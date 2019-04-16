@@ -26,7 +26,7 @@ func main3() {
 func reError1(err error) {
 	if err == nil {
 		switch err.(type) {
-		case *ice.UserError:
+		case *ice.UserUnknownError:
 			break
 		default:
 			panic(err)
