@@ -29,7 +29,7 @@ func (this *IceBuffer) WriteOperator(operator string) {
 	this.WriteStr(operator) //29+1+8=38
 }
 
-//这个值是总数据长度减去设置完context后的长度 TODO
+//这个值是总数据长度减去设置完context后的长度
 func (this *IceBuffer) WriteRealSize(siz int) {
 	this.Write(utils.IntToBytes(siz))
 }
@@ -86,7 +86,7 @@ func (this *IceBuffer) WriteStringMap(m map[string]string) {
 }
 
 func (this *IceBuffer) WriteContext(context map[string]string) {
-	this.WriteStringMap(context) //39+1=40 TODO 从这以后就是就是修正长度
+	this.WriteStringMap(context) //39+1=40 从这以后就是就是修正长度
 }
 
 //这个是总长度
@@ -122,7 +122,7 @@ func (this *IceBuffer) WriteHead() {
 	this.Write(requestHead) //10字节
 }
 
-//TODO 无參 和多参还没看怎么处理的，当前就是一个参数的
+//TODO 多参还没看怎么处理的，当前就是一个参数的
 func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, params interface{}, context map[string]string) (total, real int) {
 	total = 0
 	total += 10                 //head

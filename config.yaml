@@ -1,0 +1,21 @@
+default:
+  OperateTimeout: 2
+  ConnectTimeout: 2
+  MessageMaxSize: 65535
+  DefaultClientSize: 20
+  WarnClientSize: 30
+  MaxClientSize: 100
+  Compress: true
+
+servers:
+  - HelloIce:
+      MaxClientSize: 100
+      WarnClientSize: 30
+      Host: 127.0.0.1
+      Port: 1888
+      DefaultClientSize : 50
+  - ArticleIce:
+      MessageMaxSize: 200
+      ConnectTimeout: 2
+      Host: 127.0.0.1
+      Port: 1888

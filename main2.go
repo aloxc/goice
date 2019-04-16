@@ -11,7 +11,7 @@ import (
 )
 
 func main2() {
-	var conn, err =  ice.Connect("tcp4", "127.0.0.1:1888")
+	var conn, err = ice.Connect("tcp4", "127.0.0.1:1888")
 	if err != nil { //如果连接失败。则返回。
 		fmt.Println("连接出错：", err)
 	}
@@ -19,23 +19,23 @@ func main2() {
 	var facet string
 	var buf = ice.NewIceBuff(rw)
 	var context map[string]string
-	var mode,pmj,pmn,emj,emn,zip,rmsg byte
-	var requestId,size int
-	var head ,data []byte
+	var mode, pmj, pmn, emj, emn, zip, rmsg byte
+	var requestId, size int
+	var head, data []byte
 
 	//time.Sleep(20 * time.Second)
 
 	buf.WriteHead()
 	buf.WriteTotalSize(49)
 	buf.WriteRequestId(3)
-	buf.WriteIdentity(ice.NewIdentity("HelloIce",""))
+	buf.WriteIdentity(ice.NewIdentity("HelloIce", ""))
 	buf.WriteFacet(facet)
 	buf.WriteOperator("sayHello")
 	mode = 0
 	buf.WriteMode(mode) //38+1=39
 	context = make(map[string]string)
 	buf.WriteContext(context) //39+1=40
-	//TODO 需要设置实际长度,这个值是总数据长度减去设置完context后的长度
+	//需要设置实际长度,这个值是总数据长度减去设置完context后的长度
 	buf.WriteRealSize(9)
 	buf.WriteEncodingVersion(ice.GetDefaultEncodingVersion())
 	buf.WriteStr("aa") //46+1+2=49
@@ -92,12 +92,12 @@ func main2() {
 	lastSize = lastSize - sizeDefine
 	fmt.Println("计算数据长度是 ", lastSize)
 	fmt.Println("真实数据长度是 ", realSize)
-	data = make([]byte, lastSize ) //先读取头
+	data = make([]byte, lastSize) //先读取头
 	size, err = rw.Read(data)
-	fmt.Println("剩余数据长度 = " ,size)
+	fmt.Println("剩余数据长度 = ", size)
 	//fmt.Printf("执行结果[]\n", string(data[:]))
-	for in,d := range data{
-		fmt.Printf("执行结果[%d][%d]\n",in, d)
+	for in, d := range data {
+		fmt.Printf("执行结果[%d][%d]\n", in, d)
 	}
 	//响应头部10字节 49 63 65 50 01 00 01 00 02 00  // 10
 	//数据总长度， 1D 00 00 00   //10+4 = 14

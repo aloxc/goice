@@ -205,7 +205,6 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			data: nil,
 		}
 	case 3:
-		//TODO 添加异常处理
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)

@@ -23,7 +23,7 @@ var (
 	__Byte0 byte = 0
 )
 
-func main() {
+func mainx() {
 	//var remoteAddress, _ = net.ResolveTCPAddr("tcp4", "127.0.0.1:1888") //生成一个net.TcpAddr对像。
 	//var conn, err = net.DialTCP("tcp4", nil, remoteAddress)             //传入协议，本机地址（传了nil），远程地址，获取连接。
 	var conn, err = IceInternal.Connect("tcp4", "127.0.0.1:1888")
@@ -196,7 +196,7 @@ func main() {
 	//buf.WriteByte(0)//41+1=42
 	//buf.WriteByte(0)//42+1=43
 	//buf.WriteByte(0)//43+1=44
-	//TODO 需要设置实际长度
+	// 需要设置实际长度
 	buf.Write(utils.IntToBytes(9)) //
 
 	buf.WriteByte(1) //encoding major 44+1=45
