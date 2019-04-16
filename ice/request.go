@@ -12,60 +12,58 @@ type Request struct {
 	Method string
 	Params map[string]string
 }
-type RequestJson struct {
-	Method string
-	Params map[string]interface{}
-}
+
 //构造用于execute方法的请求
-func NewReqeust(method string,params map[string]string)*Request{
+func NewReqeust(method string, params map[string]string) *Request {
 	return &Request{
-		Method:method,
-		Params:params,
+		Method: method,
+		Params: params,
 	}
 }
-func (this*Request)String() string {
+func (this *Request) String() string {
 	r := make(map[string]interface{})
 	r["method"] = this.Method
 	r["params"] = this.Params
-	if bytes, err := json.Marshal(r);err == nil{
+	if bytes, err := json.Marshal(r); err == nil {
 		return string(bytes)
 	}
 	return ""
 }
 
 var requestId int32 = 2
+
 type IceRequest struct {
-	head *[]byte // 10 字节 0 + 10 = 10
-	totalSize int //所有数据长度 4 字节 10 + 4 = 14
-	requestId int //请求id 4 字节 14 + 4 = 18
-	*Identity  //该对象标识  1 + xx + 1 + 0 = 10 字节  18 + 2 + xx = 20 + xx
+	head      *[]byte // 10 字节 0 + 10 = 10
+	totalSize int     //所有数据长度 4 字节 10 + 4 = 14
+	requestId int     //请求id 4 字节 14 + 4 = 18
+	*Identity         //该对象标识  1 + xx + 1 + 0 = 10 字节  18 + 2 + xx = 20 + xx
 	//一个Ice 对象具有一个特殊的接口，称为它的主接口。此外， Ice 对象还可以提供零个或更多其他接口，称为facets （面）。客户可以在某个对象的各个facets 之间进行挑选，选出它们想要使用的接口。
 	//. 每个Ice 对象都有一个唯一的对象标识（object identity）。对象标识是用于把一个对象与其他所有对象区别开来的标识值。Ice 对象模型假定对象标识是全局唯一的，也就是说，在一个Ice 通信域中，不会有两个对
 	//象具有相同的对象标识。
-	Facet     string //版本控制用 1 字节 1 + 20 + xx = 21 + xx
-	Operator  string //操作名称，也就是要调用的方法名称 yy 字节 21 + xx + yy
-	OperatorMode // 1 字节 1 + 21 + xx + yy = 22 + xx + yy
-	realSize  int // 4 字节 4 + 22 + xx + yy = 26 + xx + yy
-	Context map[string]string //调用上下文 zz 字节
-	encodingVersion *EncodingVersion // 2 字节
-	Params interface{}
+	Facet           string            //版本控制用 1 字节 1 + 20 + xx = 21 + xx
+	Operator        string            //操作名称，也就是要调用的方法名称 yy 字节 21 + xx + yy
+	OperatorMode                      // 1 字节 1 + 21 + xx + yy = 22 + xx + yy
+	realSize        int               // 4 字节 4 + 22 + xx + yy = 26 + xx + yy
+	Context         map[string]string //调用上下文 zz 字节
+	encodingVersion *EncodingVersion  // 2 字节
+	Params          interface{}
 }
-func NewIceRequest(identity *Identity,mode OperatorMode,operator string,context map[string]string,params interface{}) *IceRequest{
-	return &IceRequest{
-		head:GetHead(),
-		Operator:operator,
-		OperatorMode:mode,
-		encodingVersion:GetDefaultEncodingVersion(),
-		Params:params,
-		Identity:identity,
-		Context:context,
 
+func NewIceRequest(identity *Identity, mode OperatorMode, operator string, context map[string]string, params interface{}) *IceRequest {
+	return &IceRequest{
+		head:            GetHead(),
+		Operator:        operator,
+		OperatorMode:    mode,
+		encodingVersion: GetDefaultEncodingVersion(),
+		Params:          params,
+		Identity:        identity,
+		Context:         context,
 	}
 }
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
-func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
-	atomic.AddInt32(&requestId,1)
+func (this *IceRequest) DoRequest(responseType ResponseType) []byte {
+	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
 	var conn, err = Connect("tcp4", "127.0.0.1:1888")
 	if err != nil { //如果连接失败。则返回。
@@ -104,16 +102,20 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 		buf.Write(utils.Float32ToByte(this.Params.(float32)))
 	case float64:
 		buf.Write(utils.Float64ToByte(this.Params.(float64)))
+	case *Request:
+		request := this.Params.(*Request)
+		buf.WriteStr(request.Method)
+		buf.WriteStringMap(request.Params)
 	}
 	buf.Flush()
 
 	//var pmj,pmn,emj,emn,zip,rmsg byte
 	//var requestId int
 	var size int
-	var head ,data []byte
+	var head, data []byte
 	head = make([]byte, 25) //先读取头
 	size, err = rw.Read(head)
-	if err != nil{
+	if err != nil {
 		fmt.Println(size)
 	}
 	var __Magic = [4]byte{}
@@ -135,7 +137,7 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 	//fmt.Printf("msg = %d\n", rmsg)
 	//fmt.Printf("压缩标示 = %d\n", zip)
 	fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:14]))
-	if utils.BytesToInt(head[10:14]) == size || responseType == ResponseType_Void{//void 的方法，没有返回,也就只会返回25个字节的数据
+	if utils.BytesToInt(head[10:14]) == size || responseType == ResponseType_Void { //void 的方法，没有返回,也就只会返回25个字节的数据
 		return nil
 	}
 	//requestId = utils.BytesToInt(head[14:18])
@@ -154,37 +156,32 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
 		return data
-	}else if responseType == ResponseType_Int8 {
+	} else if responseType == ResponseType_Int8 {
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
 		return data
-	}else if responseType == ResponseType_Int16 {
+	} else if responseType == ResponseType_Int16 {
 		data := make([]byte, 2)
 		size, err = rw.Read(data)
 		//for key, value := range data {
 		//	fmt.Printf("[%d][%d]\n",key,value)
 		//}
 		return data
-	}else if responseType == ResponseType_Int{
+	} else if responseType == ResponseType_Int {
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
 
 		return data
-	}else if responseType == ResponseType_Int64{
+	} else if responseType == ResponseType_Int64 {
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
 		return data
-	}else if responseType == ResponseType_Float32{
+	} else if responseType == ResponseType_Float32 {
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
 		return data
-	}else if responseType == ResponseType_Float64 {
+	} else if responseType == ResponseType_Float64 {
 		data := make([]byte, 8)
-		size, err = rw.Read(data)
-		return data
-	}else if responseType == ResponseType_Execute{
-
-		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		return data
 	}
@@ -209,7 +206,7 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 	lastSize = lastSize - sizeDefine
 	fmt.Println("计算数据长度是 ", lastSize)
 	//fmt.Println("真实数据长度是 ", realSize)
-	data = make([]byte, lastSize ) //先读取头
+	data = make([]byte, lastSize) //先读取头
 	size, err = rw.Read(data)
 	//fmt.Println("剩余数据长度 = " ,size)
 	//fmt.Printf("执行结果[]\n", string(data[:]))
@@ -219,6 +216,7 @@ func (this*IceRequest)DoRequest(responseType ResponseType)[]byte {
 	return data
 
 }
+
 //写完上面的head 10字节
 // 写 总长度
 // 写请求id

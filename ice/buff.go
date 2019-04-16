@@ -2,9 +2,7 @@ package ice
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/aloxc/goice/utils"
-	"reflect"
 )
 
 type IceBuffer struct {
@@ -39,7 +37,7 @@ func (this *IceBuffer) WriteMode(mode byte) {
 	this.WriteByte(mode) //38+1=39
 }
 func (this *IceBuffer) WriteSize(v int) {
-	if (v > 254) { //如果大于254，就写负一，然后跟上四个字节（int长度）的长度，
+	if v > 254 { //如果大于254，就写负一，然后跟上四个字节（int长度）的长度，
 		//int8 := -1
 		//this.
 		bytes := utils.IntToBytes(v)
@@ -166,7 +164,7 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 4 //整形后的数据长度（int = 4 ）
 	total += 1 //encoding major
 	total += 1 //encoding manor
-	fmt.Println(reflect.TypeOf(params))
+	//fmt.Println(reflect.TypeOf(params))
 	switch params.(type) {
 	case string:
 		{
@@ -194,7 +192,22 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 		total += 4
 	case float64:
 		total += 8
+	case *Request:
+		//fmt.Println("进入到了Request类型计算长度")
+		request := params.(*Request)
+		total += 1
+		//fmt.Println("方法:",request.Method)
+		total += len(request.Method)
+		total += 1
+		for k, v := range request.Params {
+			//fmt.Println("参数:",k,v)
+			total += 1
+			total += len(k)
+			total += 1
+			total += len(v)
+		}
+
 	}
-	fmt.Println(total,end)
+	//fmt.Println("请求长度 ",total,end)
 	return total, total - end
 }

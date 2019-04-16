@@ -13,10 +13,12 @@ const (
 	ResponseType_Float32
 	ResponseType_Float64
 	ResponseType_Execute
+	ResponseType_Execute_JSON
 )
+
 //响应结果(此结果是ice接口方法执行后返回的结果，而不是网络请求后返回的结果)
 type Response struct {
-	Code int8
-	Message string
-	Data interface{}
+	Code    int8        `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
 }
