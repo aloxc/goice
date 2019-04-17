@@ -5,9 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aloxc/goice/utils"
+	"github.com/siddontang/go/log"
 	"io"
 	"sync/atomic"
 	"time"
+)
+
+const (
+	Context_ClientAddr = "clientAddr"
 )
 
 type Request struct {
@@ -73,14 +78,19 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
-	var conn, err = Connect("tcp4", "127.0.0.1:1888")
+	address := "127.0.0.1:1888"
+	var conn, err = Connect("tcp4", address)
 	if err != nil { //如果连接失败。则返回。
-		fmt.Println("连接出错：")
+		log.Errorf("连接[%s]出错", address)
 		return nil, err
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var buf = NewIceBuff(rw)
 	//time.Sleep(20 * time.Second)
+	if this.Context == nil {
+		this.Context = make(map[string]string)
+	}
+	this.Context[Context_ClientAddr] = conn.LocalAddr().String() //往后端传客户端地址
 	total, real := buf.Prepare(this.Identity, this.Facet, this.Operator, this.Params, this.Context)
 	buf.Write(*this.head)
 	buf.WriteTotalSize(total)

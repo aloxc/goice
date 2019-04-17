@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/siddontang/go/log"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"strconv"
@@ -24,14 +25,24 @@ const (
 	MonitorPort       string = "MonitorPort"
 	Heartbeat         string = "Heartbeat"
 	RetryCount        string = "RetryCount"
+	Address           string = "Address"
+	Report            string = "Report"
 )
 
+var MonitorPorta = 0
+var ReportType = 0
 var ConfigMap = make(map[string]map[string]string)
 
-func ReadConfig() {
+func ReadConfig(configFile string) {
+	log.Info("开始读取配置")
+	if configFile == "" {
+		configFile = "config.yaml"
+	}
 	cfg, err := ParseYamlFile("config.yaml")
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("读取配置文件发生异常，请查看配置路径是否正确，格式是否正确")
+		log.Error(err)
+		return
 	}
 	operateTimeout, err := cfg.Int("default." + OperateTimeout)
 	connectTimeout, err := cfg.Int("default." + ConnectTimeout)
@@ -39,15 +50,25 @@ func ReadConfig() {
 	defaultClientSize, err := cfg.Int("default." + DefaultClientSize)
 	warnClientSize, err := cfg.Int("default." + WarnClientSize)
 	maxClientSize, err := cfg.Int("default." + MaxClientSize)
+	balance, err := cfg.Int("default." + Balance)
+	monitorPort, err := cfg.Int("default." + MonitorPort)
+	heartbeat, err := cfg.Int("default." + Heartbeat)
+	retryCount, err := cfg.Int("default." + RetryCount)
+	ReportType, err := cfg.Int("default." + Report)
 	compress, err := cfg.Bool("default." + Compress)
-	deConfig := make(map[string]interface{})
-	deConfig[OperateTimeout] = operateTimeout
-	deConfig[ConnectTimeout] = connectTimeout
-	deConfig[MessageMaxSize] = messageMaxSize
-	deConfig[DefaultClientSize] = defaultClientSize
-	deConfig[WarnClientSize] = warnClientSize
-	deConfig[MaxClientSize] = maxClientSize
-	deConfig[Compress] = compress
+
+	MonitorPorta = monitorPort
+	defaultConfig := make(map[string]interface{})
+	defaultConfig[OperateTimeout] = operateTimeout
+	defaultConfig[ConnectTimeout] = connectTimeout
+	defaultConfig[MessageMaxSize] = messageMaxSize
+	defaultConfig[DefaultClientSize] = defaultClientSize
+	defaultConfig[WarnClientSize] = warnClientSize
+	defaultConfig[MaxClientSize] = maxClientSize
+	defaultConfig[Compress] = compress
+	defaultConfig[Balance] = balance
+	defaultConfig[Heartbeat] = heartbeat
+	defaultConfig[RetryCount] = retryCount
 
 	flag.IntVar(&operateTimeout, OperateTimeout, 0, "")
 	flag.IntVar(&connectTimeout, ConnectTimeout, 0, "")
@@ -55,18 +76,27 @@ func ReadConfig() {
 	flag.IntVar(&defaultClientSize, DefaultClientSize, 0, "")
 	flag.IntVar(&warnClientSize, WarnClientSize, 0, "")
 	flag.IntVar(&maxClientSize, MaxClientSize, 0, "")
+	flag.IntVar(&heartbeat, Heartbeat, 0, "")
+	flag.IntVar(&retryCount, RetryCount, 0, "")
+	flag.IntVar(&monitorPort, MonitorPort, 0, "")
+	flag.IntVar(&balance, Balance, 0, "")
+	flag.IntVar(&ReportType, Report, 0, "")
 	var cstr string
 	flag.StringVar(&cstr, Compress, "", "")
 	flag.Parse()
-	inConfig := make(map[string]interface{})
-	inConfig[OperateTimeout] = operateTimeout
-	inConfig[ConnectTimeout] = connectTimeout
-	inConfig[MessageMaxSize] = messageMaxSize
-	inConfig[DefaultClientSize] = defaultClientSize
-	inConfig[WarnClientSize] = warnClientSize
-	inConfig[MaxClientSize] = maxClientSize
+	cmdConfig := make(map[string]interface{})
+	cmdConfig[OperateTimeout] = operateTimeout
+	cmdConfig[ConnectTimeout] = connectTimeout
+	cmdConfig[MessageMaxSize] = messageMaxSize
+	cmdConfig[DefaultClientSize] = defaultClientSize
+	cmdConfig[WarnClientSize] = warnClientSize
+	cmdConfig[MaxClientSize] = maxClientSize
+	cmdConfig[RetryCount] = retryCount
+	cmdConfig[Heartbeat] = heartbeat
+	cmdConfig[Balance] = balance
+
 	if cstr != "" {
-		inConfig[Compress], _ = strconv.ParseBool(cstr)
+		cmdConfig[Compress], _ = strconv.ParseBool(cstr)
 	}
 	servers, err := cfg.List("servers")
 	for _, server := range servers {
@@ -74,36 +104,43 @@ func ReadConfig() {
 		for k1, n1 := range mp {
 			n1m := n1.(map[string]interface{})
 			mp2 := make(map[string]string)
-			for dk, dv := range deConfig {
-				switch dv.(type) {
+			for defaultKey, defaultValue := range defaultConfig {
+				switch defaultValue.(type) {
 				case int:
-					mp2[dk] = strconv.Itoa(dv.(int))
+					mp2[defaultKey] = strconv.Itoa(defaultValue.(int))
 				case bool:
-					mp2[dk] = strconv.FormatBool(dv.(bool))
+					mp2[defaultKey] = strconv.FormatBool(defaultValue.(bool))
 				}
 			}
-			for k2, n2 := range n1m {
-				switch n2.(type) {
-				case int:
-					mp2[k2] = strconv.Itoa(n2.(int))
-				case string:
-					mp2[k2] = n2.(string)
-				}
 
-			}
-			for ink, inv := range inConfig {
-				switch inv.(type) {
+			for fileKey, fileValue := range n1m {
+				switch fileValue.(type) {
 				case int:
-					if inv.(int) > 0 {
-						mp2[ink] = strconv.Itoa(inv.(int))
+					mp2[fileKey] = strconv.Itoa(fileValue.(int))
+				case string:
+					mp2[fileKey] = fileValue.(string)
+				}
+			}
+			for inputKey, inputValue := range cmdConfig {
+				switch inputValue.(type) {
+				case int:
+					if inputValue.(int) > 0 {
+						mp2[inputKey] = strconv.Itoa(inputValue.(int))
 					}
 				case bool:
-					mp2[ink] = strconv.FormatBool(inv.(bool))
+					mp2[inputKey] = strconv.FormatBool(inputValue.(bool))
 				}
 			}
-			ConfigMap[k1] = mp2
+			if _, ok := mp2[Address]; !ok {
+				log.Errorf("服务[%s]必须设置Address属性", k1)
+				fmt.Printf("服务[%s]必须设置Address属性，重新设置后再次尝试\n", k1)
+				return
+			} else {
+				ConfigMap[k1] = mp2
+			}
 		}
 	}
+	log.Info("完成配置文件解析")
 }
 
 // Config represents a configuration with convenient access methods.

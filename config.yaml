@@ -6,16 +6,18 @@ default:
   WarnClientSize: 30
   MaxClientSize: 100
   Compress: true
+  Balance: 1
+  MonitorPort: 5018
+  Heartbeat: 3
+  RetryCount: 3
 
 servers:
   - HelloIce:
       MaxClientSize: 100
       WarnClientSize: 30
-      Host: 127.0.0.1
-      Port: 1888
+      Address: 127.0.0.1:1888
       DefaultClientSize : 50
   - ArticleIce:
       MessageMaxSize: 200
       ConnectTimeout: 2
-      Host: 127.0.0.1
-      Port: 1888
+      #Address: localhost:1888
