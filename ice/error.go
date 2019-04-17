@@ -45,6 +45,11 @@ type TimeoutError struct {
 	operator string
 	params   interface{}
 }
+type ConnectTimeoutError struct {
+	timeout int
+	address string
+	network string
+}
 
 func NewTimeoutError(address, operator string, timeout int, params interface{}) *TimeoutError {
 	return &TimeoutError{
@@ -107,6 +112,15 @@ func NewObjectNotExistsError(address, operator, desc string, params interface{})
 		desc:     desc,
 	}
 }
+
+func NewConnectTimeoutError(address, network string, timeout int) *ConnectTimeoutError {
+	return &ConnectTimeoutError{
+		address: address,
+		network: network,
+		timeout: timeout,
+	}
+}
+
 func (this *UserUnknownError) Error() string {
 	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
@@ -134,4 +148,8 @@ func (this *OperatorNotExistsError) Error() string {
 
 func (this *UserError) Error() string {
 	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
+}
+
+func (this *ConnectTimeoutError) Error() string {
+	return fmt.Sprintf("\n连接ICE服务器超时异常: [%s://%s?timeout=%d]\n", this.network, this.address, this.timeout)
 }

@@ -79,9 +79,10 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
 	address := "127.0.0.1:1888"
-	var conn, err = Connect("tcp4", address)
+	var conn, err = Connect("tcp4", address, timeout)
+
 	if err != nil { //如果连接失败。则返回。
-		log.Errorf("连接[%s]出错", address)
+		log.Error(err)
 		return nil, err
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
@@ -132,7 +133,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 
 	errAndData := make(chan *reqeustErrorAndData)
 	go request(conn.RemoteAddr().String(), rw, responseType, this.Params, errAndData)
-	go timeoutMonitor(conn.RemoteAddr().String(), "", timeout, this.Params, errAndData)
+	go requestTimeoutMonitor(conn.RemoteAddr().String(), "", timeout, this.Params, errAndData)
 	ed := <-errAndData
 	return ed.data, ed.err
 
@@ -177,10 +178,10 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 	}
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
-	var replyStatus uint8 = head[18]
+	var replyStatus byte = head[18]
 	fmt.Println("响应状态 ", replyStatus)
 	switch replyStatus {
-	case 1:
+	case ReplyUserException:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -197,7 +198,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			err:  NewUserError(address, "", string(data), params),
 			data: nil,
 		}
-	case 2:
+	case ReplyObjectNotExist:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -214,7 +215,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			err:  NewObjectNotExistsError(address, "", string(data), params),
 			data: nil,
 		}
-	case 3:
+	case ReplyFacetNotExist:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -232,7 +233,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			data: nil,
 		}
 		return
-	case 4:
+	case ReplyOperationNotExist:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -250,7 +251,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			data: nil,
 		}
 		return
-	case 5:
+	case ReplyUnknownLocalException:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -267,7 +268,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			err:  NewIceServerError(address, "", string(data), params),
 			data: nil,
 		}
-	case 6:
+	case ReplyUnknownUserException:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -284,7 +285,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			err:  NewUserError(address, "", string(data), params),
 			data: nil,
 		}
-	case 7: //用户异常
+	case ReplyUnknownException: //用户异常
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
@@ -420,7 +421,9 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data: data,
 	}
 }
-func timeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
+
+//请求超时monitor
+func requestTimeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
 	fmt.Println("启动超时监控启动")
 	<-time.After(time.Duration(timeout) * time.Second)
 	errAndData <- &reqeustErrorAndData{

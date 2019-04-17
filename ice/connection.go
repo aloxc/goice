@@ -4,25 +4,67 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/aloxc/goice/utils"
+	"github.com/siddontang/go-log/log"
 	"net"
+	"time"
 )
 
 type Connection struct {
 	*net.TCPConn
 }
 
-//like this network:tcp,address :127.0.0.1:1888
-func Connect(network string, address string) (*Connection, error) {
+type connAndError struct {
+	*Connection
+	error
+}
+
+//连接超时monitor
+func connectTimeoutMonitor(network string, address string, timeout int, caech chan *connAndError) {
+	log.Info("启动连接监控启动", address)
+	<-time.After(time.Duration(timeout) * time.Second)
+	caech <- &connAndError{
+		error: NewConnectTimeoutError(address, network, timeout),
+	}
+	log.Info("超时完成")
+}
+func connect(network string, address string, caech chan *connAndError) {
+	//log.Info("准备连接服务器",address)
 	var remoteAddress, _ = net.ResolveTCPAddr(network, address)
 	var conn, err = net.DialTCP(network, nil, remoteAddress)
 	if err != nil {
-		return nil, err
+		caech <- &connAndError{
+			error: err,
+		}
+		return
 	}
 	c := &Connection{
 		TCPConn: conn,
 	}
 	c.init()
-	return c, nil
+	caech <- &connAndError{
+		Connection: c,
+	}
+	//log.Info("已连接服务器",address)
+	return
+}
+
+//like this network:tcp,address :127.0.0.1:1888
+func Connect(network string, address string, timeout int) (*Connection, error) {
+	var caech = make(chan *connAndError)
+	go connect(network, address, caech)
+	go connectTimeoutMonitor(network, address, timeout, caech)
+	var cae *connAndError = <-caech
+	return cae.Connection, cae.error
+	//var remoteAddress, _ = net.ResolveTCPAddr(network, address)
+	//var conn, err = net.DialTCP(network, nil, remoteAddress)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//c := &Connection{
+	//	TCPConn: conn,
+	//}
+	//c.init()
+	//return c, nil
 }
 func (this *Connection) init() {
 	magic := []byte{0x49, 0x63, 0x65, 0x50}
@@ -51,7 +93,7 @@ func (this *Connection) init() {
 	var operator string
 	var head, data []byte
 	var err error
-	buf.Write(requestHdr)          // 10字节
+	buf.Write(requestHdr)           // 10字节
 	buf.Write(utils.IntToBytes(69)) //size 10 +4 = 14
 	buf.Write(utils.IntToBytes(1))  //requestId 14+4=18
 	identity = Identity{
@@ -81,11 +123,9 @@ func (this *Connection) init() {
 	buf.WriteStr("::service::HelloService") //45+1+23=69
 	buf.Flush()
 
-
-
 	head = make([]byte, 14) //先读取头
 	size, err = rw.Read(head)
-	if err != nil{
+	if err != nil {
 		fmt.Println(size)
 		panic(err)
 	}

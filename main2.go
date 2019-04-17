@@ -11,7 +11,7 @@ import (
 )
 
 func main2() {
-	var conn, err = ice.Connect("tcp4", "127.0.0.1:1888")
+	var conn, err = ice.Connect("tcp4", "127.0.0.1:1888", 0)
 	if err != nil { //如果连接失败。则返回。
 		fmt.Println("连接出错：", err)
 	}
