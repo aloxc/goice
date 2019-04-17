@@ -20,4 +20,4 @@ servers:
   - ArticleIce:
       MessageMaxSize: 200
       ConnectTimeout: 2
-      #Address: localhost:1888
+      Address: localhost:1888
