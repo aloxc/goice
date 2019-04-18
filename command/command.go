@@ -4,6 +4,9 @@ import (
 	"fmt"
 	_ "github.com/aloxc/goice/banner"
 	"github.com/aloxc/goice/config"
+	_ "github.com/aloxc/goice/monitor/modules"
+	_ "github.com/aloxc/goice/monitor/routers"
+	"github.com/astaxie/beego"
 	"github.com/siddontang/go-log/log"
 	"os"
 	"time"
@@ -43,13 +46,13 @@ func (this *Command) Run() {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
-	var configFile = ""
+	var configFile = "config/config.yaml"
 	if len(os.Args) > 1 && (os.Args[1] == "--ConfigFile" || os.Args[1] == "-ConfigFile" || os.Args[1] == "ConfigFile") {
 		configFile = os.Args[2]
 	}
 	config.ReadConfig(configFile)
 
-	if config.MonitorPorta > 0 {
+	if config.HttpPort > 0 {
 		startMonitor()
 	}
 	if config.ReportType > 0 {
@@ -72,5 +75,24 @@ func startReport() {
 
 //启动http服务
 func startMonitor() {
+	//appname =
+	//	httpport = 80
+	//runmode = dev
+	//EnableAdmin = true
+	//AdminPort = 8088
+	//beego.BConfig.Log.AccessLogs = true
+	//beego.BConfig.Log.FileLineNum = true
+	//copyrequestbody = true
+	//session = true
 
+	beego.BConfig.AppName = "goice监控"
+	beego.BConfig.Listen.HTTPPort = config.HttpPort
+	beego.BConfig.Listen.EnableAdmin = false
+	beego.BConfig.Log.AccessLogs = false
+	beego.BConfig.CopyRequestBody = false
+	beego.BConfig.WebConfig.Session.SessionOn = false
+	beego.BConfig.WebConfig.ViewsPath = "monitor/views"
+	beego.SetStaticPath("statics/", "monitor/statics/")
+
+	beego.Run()
 }

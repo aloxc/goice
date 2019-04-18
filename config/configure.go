@@ -29,16 +29,16 @@ const (
 	Report            string = "Report"
 )
 
-var MonitorPorta = 0
+var HttpPort = 0
 var ReportType = 0
 var ConfigMap = make(map[string]map[string]string)
 
 func ReadConfig(configFile string) {
 	log.Info("开始读取配置")
 	if configFile == "" {
-		configFile = "config.yaml"
+		configFile = "config/config.yaml"
 	}
-	cfg, err := ParseYamlFile("config.yaml")
+	cfg, err := ParseYamlFile(configFile)
 	if err != nil {
 		fmt.Println("读取配置文件发生异常，请查看配置路径是否正确，格式是否正确")
 		log.Error(err)
@@ -57,7 +57,7 @@ func ReadConfig(configFile string) {
 	ReportType, err := cfg.Int("default." + Report)
 	compress, err := cfg.Bool("default." + Compress)
 
-	MonitorPorta = monitorPort
+	HttpPort = monitorPort
 	defaultConfig := make(map[string]interface{})
 	defaultConfig[OperateTimeout] = operateTimeout
 	defaultConfig[ConnectTimeout] = connectTimeout
