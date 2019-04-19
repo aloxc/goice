@@ -111,4 +111,4 @@ ice客户端请求出站一般看XXXPrxHelper,比如说我们测试的GoicePrxHe
 记录下，ice服务器端（java）是通过nio实现的高并发的，它没有使用任何第三方nio包或者任何第三方其他包，
  
 # 3、goice目录结构图
-![ice协议](assert/goice-path-desc.png)
+![goice目录结构图，原图在wps网盘中](assert/goice-path-desc.png)

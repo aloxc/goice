@@ -7,6 +7,7 @@ import (
 	"github.com/aloxc/goice/utils"
 	"github.com/siddontang/go/log"
 	"io"
+	"net"
 	"sync/atomic"
 	"time"
 )
@@ -79,8 +80,8 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
 	address := "127.0.0.1:1888"
-	var conn, err = Connect("tcp4", address, timeout)
-
+	//var conn, err = Connect("tcp4", address, timeout)
+	var conn, err = net.DialTimeout("tcp4", address, time.Duration(timeout)*time.Second)
 	if err != nil { //如果连接失败。则返回。
 		log.Error(err)
 		return nil, err
