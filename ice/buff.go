@@ -3,7 +3,6 @@ package ice
 import (
 	"bufio"
 	"github.com/aloxc/goice/utils"
-	"github.com/siddontang/go-log/log"
 )
 
 type IceBuffer struct {
@@ -209,6 +208,6 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 		}
 
 	}
-	log.Info("请求长度 ", total, end)
+	//log.Info("请求长度 ", total, end)
 	return total, total - end
 }

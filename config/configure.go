@@ -13,25 +13,30 @@ import (
 	"syscall"
 )
 
+//为了方便类型设置别名，
+type ConfigNodeName string
+type ContextName string
+
 const (
-	OperateTimeout    string = "OperateTimeout"
-	ConnectTimeout    string = "ConnectTimeout"
-	MessageMaxSize    string = "MessageMaxSize"
-	DefaultClientSize string = "DefaultClientSize"
-	WarnClientSize    string = "WarnClientSize"
-	MaxClientSize     string = "MaxClientSize"
-	Compress          string = "Compress"
-	Balance           string = "Balance"
-	MonitorPort       string = "MonitorPort"
-	Heartbeat         string = "Heartbeat"
-	RetryCount        string = "RetryCount"
-	Address           string = "Address"
-	Report            string = "Report"
+	OperateTimeout     ConfigNodeName = "OperateTimeout"
+	ConnectTimeout     ConfigNodeName = "ConnectTimeout"
+	MessageMaxSize     ConfigNodeName = "MessageMaxSize"
+	DefaultClientSize  ConfigNodeName = "DefaultClientSize"
+	WarnClientSize     ConfigNodeName = "WarnClientSize"
+	MaxClientSize      ConfigNodeName = "MaxClientSize"
+	Compress           ConfigNodeName = "Compress"
+	Balance            ConfigNodeName = "Balance"
+	MonitorPort        ConfigNodeName = "MonitorPort"
+	Heartbeat          ConfigNodeName = "Heartbeat"
+	RetryCount         ConfigNodeName = "RetryCount"
+	Address            ConfigNodeName = "Address"
+	Report             ConfigNodeName = "Report"
+	Context_ClientAddr ContextName    = "clientAddr"
 )
 
 var HttpPort = 0
 var ReportType = 0
-var ConfigMap = make(map[string]map[string]string)
+var ConfigMap = make(map[string]map[ConfigNodeName]interface{})
 
 func ReadConfig(configFile string) {
 	log.Info("开始读取配置")
@@ -44,21 +49,21 @@ func ReadConfig(configFile string) {
 		log.Error(err)
 		return
 	}
-	operateTimeout, err := cfg.Int("default." + OperateTimeout)
-	connectTimeout, err := cfg.Int("default." + ConnectTimeout)
-	messageMaxSize, err := cfg.Int("default." + MessageMaxSize)
-	defaultClientSize, err := cfg.Int("default." + DefaultClientSize)
-	warnClientSize, err := cfg.Int("default." + WarnClientSize)
-	maxClientSize, err := cfg.Int("default." + MaxClientSize)
-	balance, err := cfg.Int("default." + Balance)
-	monitorPort, err := cfg.Int("default." + MonitorPort)
-	heartbeat, err := cfg.Int("default." + Heartbeat)
-	retryCount, err := cfg.Int("default." + RetryCount)
-	ReportType, err := cfg.Int("default." + Report)
-	compress, err := cfg.Bool("default." + Compress)
+	operateTimeout, err := cfg.Int("default." + string(OperateTimeout))
+	connectTimeout, err := cfg.Int("default." + string(ConnectTimeout))
+	messageMaxSize, err := cfg.Int("default." + string(MessageMaxSize))
+	defaultClientSize, err := cfg.Int("default." + string(DefaultClientSize))
+	warnClientSize, err := cfg.Int("default." + string(WarnClientSize))
+	maxClientSize, err := cfg.Int("default." + string(MaxClientSize))
+	balance, err := cfg.Int("default." + string(Balance))
+	monitorPort, err := cfg.Int("default." + string(MonitorPort))
+	heartbeat, err := cfg.Int("default." + string(Heartbeat))
+	retryCount, err := cfg.Int("default." + string(RetryCount))
+	ReportType, err := cfg.Int("default." + string(Report))
+	compress, err := cfg.Bool("default." + string(Compress))
 
 	HttpPort = monitorPort
-	defaultConfig := make(map[string]interface{})
+	defaultConfig := make(map[ConfigNodeName]interface{})
 	defaultConfig[OperateTimeout] = operateTimeout
 	defaultConfig[ConnectTimeout] = connectTimeout
 	defaultConfig[MessageMaxSize] = messageMaxSize
@@ -70,21 +75,21 @@ func ReadConfig(configFile string) {
 	defaultConfig[Heartbeat] = heartbeat
 	defaultConfig[RetryCount] = retryCount
 
-	flag.IntVar(&operateTimeout, OperateTimeout, 0, "")
-	flag.IntVar(&connectTimeout, ConnectTimeout, 0, "")
-	flag.IntVar(&messageMaxSize, MessageMaxSize, 0, "")
-	flag.IntVar(&defaultClientSize, DefaultClientSize, 0, "")
-	flag.IntVar(&warnClientSize, WarnClientSize, 0, "")
-	flag.IntVar(&maxClientSize, MaxClientSize, 0, "")
-	flag.IntVar(&heartbeat, Heartbeat, 0, "")
-	flag.IntVar(&retryCount, RetryCount, 0, "")
-	flag.IntVar(&monitorPort, MonitorPort, 0, "")
-	flag.IntVar(&balance, Balance, 0, "")
-	flag.IntVar(&ReportType, Report, 0, "")
+	flag.IntVar(&operateTimeout, string(OperateTimeout), 0, "")
+	flag.IntVar(&connectTimeout, string(ConnectTimeout), 0, "")
+	flag.IntVar(&messageMaxSize, string(MessageMaxSize), 0, "")
+	flag.IntVar(&defaultClientSize, string(DefaultClientSize), 0, "")
+	flag.IntVar(&warnClientSize, string(WarnClientSize), 0, "")
+	flag.IntVar(&maxClientSize, string(MaxClientSize), 0, "")
+	flag.IntVar(&heartbeat, string(Heartbeat), 0, "")
+	flag.IntVar(&retryCount, string(RetryCount), 0, "")
+	flag.IntVar(&monitorPort, string(MonitorPort), 0, "")
+	flag.IntVar(&balance, string(Balance), 0, "")
+	flag.IntVar(&ReportType, string(Report), 0, "")
 	var cstr string
-	flag.StringVar(&cstr, Compress, "", "")
+	flag.StringVar(&cstr, string(Compress), "", "")
 	flag.Parse()
-	cmdConfig := make(map[string]interface{})
+	cmdConfig := make(map[ConfigNodeName]interface{})
 	cmdConfig[OperateTimeout] = operateTimeout
 	cmdConfig[ConnectTimeout] = connectTimeout
 	cmdConfig[MessageMaxSize] = messageMaxSize
@@ -103,32 +108,32 @@ func ReadConfig(configFile string) {
 		mp := server.(map[string]interface{})
 		for k1, n1 := range mp {
 			n1m := n1.(map[string]interface{})
-			mp2 := make(map[string]string)
+			mp2 := make(map[ConfigNodeName]interface{})
 			for defaultKey, defaultValue := range defaultConfig {
 				switch defaultValue.(type) {
 				case int:
-					mp2[defaultKey] = strconv.Itoa(defaultValue.(int))
+					mp2[defaultKey] = defaultValue.(int)
 				case bool:
-					mp2[defaultKey] = strconv.FormatBool(defaultValue.(bool))
+					mp2[defaultKey] = defaultValue.(bool)
 				}
 			}
 
 			for fileKey, fileValue := range n1m {
 				switch fileValue.(type) {
 				case int:
-					mp2[fileKey] = strconv.Itoa(fileValue.(int))
+					mp2[ConfigNodeName(fileKey)] = fileValue.(int)
 				case string:
-					mp2[fileKey] = fileValue.(string)
+					mp2[ConfigNodeName(fileKey)] = fileValue.(string)
 				}
 			}
 			for inputKey, inputValue := range cmdConfig {
 				switch inputValue.(type) {
 				case int:
 					if inputValue.(int) > 0 {
-						mp2[inputKey] = strconv.Itoa(inputValue.(int))
+						mp2[inputKey] = inputValue.(int)
 					}
 				case bool:
-					mp2[inputKey] = strconv.FormatBool(inputValue.(bool))
+					mp2[inputKey] = inputValue.(bool)
 				}
 			}
 			if _, ok := mp2[Address]; !ok {
@@ -140,7 +145,19 @@ func ReadConfig(configFile string) {
 			}
 		}
 	}
+	//PrintConfig()
 	log.Info("完成配置文件解析")
+}
+
+func PrintConfig() {
+	var str string = ""
+	for sername, serconfig := range ConfigMap {
+		str += fmt.Sprintf("服务名 %s\n", sername)
+		for conkey, convalue := range serconfig {
+			str += fmt.Sprintf("\t配置名称 %s = %v ,type = %T\n", conkey, convalue, convalue)
+		}
+	}
+	fmt.Println(str)
 }
 
 // Config represents a configuration with convenient access methods.

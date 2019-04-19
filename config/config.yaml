@@ -7,7 +7,7 @@ default:
   MaxClientSize: 100
   Compress: true
   Balance: 1
-  MonitorPort: 8888
+  MonitorPort: 0
   Heartbeat: 3
   RetryCount: 3
 

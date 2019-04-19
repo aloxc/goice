@@ -3,17 +3,16 @@ package ice
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"github.com/aloxc/goice/config"
+	"github.com/aloxc/goice/pool"
 	"github.com/aloxc/goice/utils"
+	"github.com/pkg/errors"
 	"github.com/siddontang/go/log"
 	"io"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
-)
-
-const (
-	Context_ClientAddr = "clientAddr"
 )
 
 type Request struct {
@@ -43,13 +42,18 @@ func (this *Request) String() string {
 	return ""
 }
 
-var requestId int32 = 2
+var (
+	requestId int32 = 2
+	connMap         = map[string]pool.Pool{}
+	mux       sync.Mutex
+)
 
 type IceRequest struct {
-	head      *[]byte // 10 字节 0 + 10 = 10
-	totalSize int     //所有数据长度 4 字节 10 + 4 = 14
-	requestId int     //请求id 4 字节 14 + 4 = 18
-	*Identity         //该对象标识  1 + xx + 1 + 0 = 10 字节  18 + 2 + xx = 20 + xx
+	Name      string    //ice名称
+	head      *[]byte   // 10 字节 0 + 10 = 10
+	totalSize int       //所有数据长度 4 字节 10 + 4 = 14
+	requestId int       //请求id 4 字节 14 + 4 = 18
+	Identity  *Identity //该对象标识  1 + xx + 1 + 0 = 10 字节  18 + 2 + xx = 20 + xx
 	//一个Ice 对象具有一个特殊的接口，称为它的主接口。此外， Ice 对象还可以提供零个或更多其他接口，称为facets （面）。客户可以在某个对象的各个facets 之间进行挑选，选出它们想要使用的接口。
 	//. 每个Ice 对象都有一个唯一的对象标识（object identity）。对象标识是用于把一个对象与其他所有对象区别开来的标识值。Ice 对象模型假定对象标识是全局唯一的，也就是说，在一个Ice 通信域中，不会有两个对
 	//象具有相同的对象标识。
@@ -64,6 +68,7 @@ type IceRequest struct {
 
 func NewIceRequest(identity *Identity, mode OperatorMode, operator string, context map[string]string, params interface{}) *IceRequest {
 	return &IceRequest{
+		Name:            identity.Name,
 		head:            GetHead(),
 		Operator:        operator,
 		OperatorMode:    mode,
@@ -79,20 +84,23 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
-	address := "127.0.0.1:1888"
-	//var conn, err = Connect("tcp4", address, timeout)
-	var conn, err = net.DialTimeout("tcp4", address, time.Duration(timeout)*time.Second)
+	curPool, err := this.getPool()
 	if err != nil { //如果连接失败。则返回。
 		log.Error(err)
 		return nil, err
 	}
+	conn, err := curPool.Get()
+	if err != nil { //如果连接失败。则返回。
+		log.Error(err)
+		return nil, err
+	}
+	defer curPool.Return(conn)
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var buf = NewIceBuff(rw)
-	//time.Sleep(20 * time.Second)
 	if this.Context == nil {
 		this.Context = make(map[string]string)
 	}
-	this.Context[Context_ClientAddr] = conn.LocalAddr().String() //往后端传客户端地址
+	this.Context[string(config.Context_ClientAddr)] = conn.LocalAddr().String() //往后端传客户端地址
 	total, real := buf.Prepare(this.Identity, this.Facet, this.Operator, this.Params, this.Context)
 	buf.Write(*this.head)
 	buf.WriteTotalSize(total)
@@ -129,7 +137,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 		buf.WriteStringMap(request.Params)
 	}
 	buf.Flush()
-	fmt.Println("请求已经发送")
+	log.Info("请求已经发送")
 	//var timeoutCh chan int
 
 	errAndData := make(chan *reqeustErrorAndData)
@@ -138,6 +146,42 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	ed := <-errAndData
 	return ed.data, ed.err
 
+}
+func (this *IceRequest) getPool() (pool.Pool, error) {
+	var curPool pool.Pool
+	var ok bool
+	if curPool, ok = connMap[this.Name]; !ok {
+		mux.Lock()
+		if curPool, ok = connMap[this.Name]; !ok { //双检查锁
+			curPool, err := pool.NewGPool(
+				&pool.PoolConfig{
+					Factory: func() (net.Conn, error) {
+						conn, err := net.DialTimeout("tcp4", config.ConfigMap[this.Name][config.Address].(string),
+							time.Duration(config.ConfigMap[this.Name][config.ConnectTimeout].(int))*time.Second)
+						if err == nil {
+							InitConnection(&conn) //连接后一定要向服务器发送一条head请求
+						}
+						return conn, err
+					},
+					MaxCap:  config.ConfigMap[this.Name]["MaxClientSize"].(int),
+					InitCap: 1,
+				})
+			if err != nil {
+				return nil, errors.New("连接池异常")
+			}
+			connMap[this.Name] = curPool
+		}
+		mux.Unlock()
+	}
+	curPool = connMap[this.Name]
+	return curPool, nil
+
+	//直接使用连接的代码
+	//var conn, err = Connect("tcp4", address, timeout)
+	//if err != nil { //如果连接失败。则返回。
+	//	log.Error(err)
+	//	return nil, err
+	//}
 }
 func request(address string, rw io.ReadWriter, responseType ResponseType, params interface{}, errAndData chan *reqeustErrorAndData) {
 	var size, lastSize int
@@ -179,15 +223,15 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 	}
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
-	var replyStatus byte = head[18]
-	fmt.Println("响应状态 ", replyStatus)
+	var replyStatus = head[18]
+	log.Info("响应状态 ", replyStatus)
 	switch replyStatus {
 	case ReplyUserException:
 		lastSize = utils.BytesToInt(head[20:24])
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -204,7 +248,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -221,7 +265,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -239,7 +283,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -257,7 +301,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -274,7 +318,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -291,7 +335,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 		data := make([]byte, lastSize) //读取用户异常信息
 		size, err = rw.Read(data)
 		if err != nil {
-			fmt.Println("读取异常信息异常")
+			log.Info("读取异常信息异常")
 			errAndData <- &reqeustErrorAndData{
 				err:  err,
 				data: nil,
@@ -308,12 +352,12 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 
 	}
 	lastSize = utils.BytesToInt(head[19:23])
-	//fmt.Println("整形后面的数据长度（包括整形4字节） ", lastSize)
+	//log.Info("整形后面的数据长度（包括整形4字节） ", lastSize)
 	//_encodingMajor := head[23]
 	//_encodingMinor := head[24]
 	lastSize = lastSize - 4 - 1 - 1 //4:整形后面包括整形长度，1：主编码版本 ，1：副编码版本
 	//fmt.Printf("编码版本major = %d,minor = %d\n", _encodingMajor, _encodingMinor)
-	//fmt.Println("最终数据长度及数据 的长度", lastSize)
+	//log.Info("最终数据长度及数据 的长度", lastSize)
 
 	if responseType == ResponseType_Bool {
 		data := make([]byte, 1)
@@ -401,13 +445,13 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 			return
 		}
 		//realSize = utils.BytesToInt(dataSizeData[1:])
-		//fmt.Println("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
+		//log.Info("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
 	}
-	//fmt.Println("lastSize=",lastSize)
+	//log.Info("lastSize=",lastSize)
 	lastSize = lastSize - sizeDefine
-	//fmt.Println("sizeDefine=" ,sizeDefine)
-	//fmt.Println("计算数据长度是 ", lastSize)
-	//fmt.Println("真实数据长度是 ", realSize)
+	//log.Info("sizeDefine=" ,sizeDefine)
+	//log.Info("计算数据长度是 ", lastSize)
+	//log.Info("真实数据长度是 ", realSize)
 	data = make([]byte, lastSize) //先读取头
 	size, err = rw.Read(data)
 	if err != nil {
@@ -425,13 +469,13 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, params
 
 //请求超时monitor
 func requestTimeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
-	fmt.Println("启动超时监控启动")
+	log.Info("启动超时监控启动")
 	<-time.After(time.Duration(timeout) * time.Second)
 	errAndData <- &reqeustErrorAndData{
 		err:  NewTimeoutError(address, operator, timeout, params),
 		data: nil,
 	}
-	fmt.Println("超时完成")
+	log.Info("超时完成")
 }
 
 //写完上面的head 10字节

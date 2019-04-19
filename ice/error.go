@@ -51,6 +51,13 @@ type ConnectTimeoutError struct {
 	network string
 }
 
+//连接池满了异常
+type NoMoreConnectionError struct {
+	address       string
+	network       string
+	maxClientSize int
+}
+
 func NewTimeoutError(address, operator string, timeout int, params interface{}) *TimeoutError {
 	return &TimeoutError{
 		timeout:  timeout,
@@ -121,6 +128,13 @@ func NewConnectTimeoutError(address, network string, timeout int) *ConnectTimeou
 	}
 }
 
+func NewNoMoreConnectionError(address, network string, timeout, maxConnectionCount int, params interface{}) *NoMoreConnectionError {
+	return &NoMoreConnectionError{
+		address:       address,
+		network:       network,
+		maxClientSize: maxConnectionCount,
+	}
+}
 func (this *UserUnknownError) Error() string {
 	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
@@ -131,7 +145,7 @@ func (this *TimeoutError) Error() string {
 }
 
 func (this *ObjectNotExistsError) Error() string {
-	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
+	return fmt.Sprintf("\nICE对象不存在异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
 
 func (this *IceServerError) Error() string {
@@ -139,17 +153,21 @@ func (this *IceServerError) Error() string {
 }
 
 func (this *FacetNotExistsError) Error() string {
-	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
+	return fmt.Sprintf("\nICE Facet不存在异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
 
 func (this *OperatorNotExistsError) Error() string {
-	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
+	return fmt.Sprintf("\nICE方法不存在异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
 
 func (this *UserError) Error() string {
-	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
+	return fmt.Sprintf("\nICE用户异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
 
 func (this *ConnectTimeoutError) Error() string {
 	return fmt.Sprintf("\n连接ICE服务器超时异常: [%s://%s?timeout=%d]\n", this.network, this.address, this.timeout)
+}
+
+func (this *NoMoreConnectionError) Error() string {
+	return fmt.Sprintf("\n连接ICE服务器连接数满异常: [%s://%s?maxConnectionCount=%d]\n", this.network, this.address, this.maxClientSize)
 }

@@ -75,16 +75,6 @@ func startReport() {
 
 //启动http服务
 func startMonitor() {
-	//appname =
-	//	httpport = 80
-	//runmode = dev
-	//EnableAdmin = true
-	//AdminPort = 8088
-	//beego.BConfig.Log.AccessLogs = true
-	//beego.BConfig.Log.FileLineNum = true
-	//copyrequestbody = true
-	//session = true
-
 	beego.BConfig.AppName = "goice监控"
 	beego.BConfig.Listen.HTTPPort = config.HttpPort
 	beego.BConfig.Listen.EnableAdmin = false
