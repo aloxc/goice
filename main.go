@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/aloxc/goice/command"
 	"github.com/aloxc/goice/ice"
-	"github.com/aloxc/goice/utils"
 	"github.com/siddontang/go-log/log"
 	"time"
 )
@@ -39,7 +38,7 @@ func TestUserpostTodo() {
 	reError3(err)
 	//if showResult {
 	//	if showResult {
-	fmt.Println("请求结果", string(result))
+	fmt.Println("请求结果", result)
 	//}
 	//}
 }
@@ -51,7 +50,7 @@ func TestGoiceSayHi1() {
 	reError3(err)
 	//if showResult {
 	//	if showResult {
-	fmt.Println("请求结果", string(result))
+	fmt.Println("请求结果", result)
 	//}
 	//}
 }
@@ -62,7 +61,8 @@ func TestGoiceGetLongUsingContext1() {
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getLong", context, nil)
 	result, err := request.DoRequest(ice.ResponseType_Int64)
 	reError3(err)
-	fmt.Println("请求结果", utils.BytesToInt64(result))
+	fmt.Println("请求结果", result)
+
 }
 func TestGoiceExecute1() {
 
@@ -75,9 +75,9 @@ func TestGoiceExecute1() {
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "execute", nil, req)
 	result, err := request.DoRequest(ice.ResponseType_Execute)
 	reError3(err)
-	ret := string(result)
+	ret := result
 	var response ice.Response
-	json.Unmarshal(result, &response)
+	json.Unmarshal([]byte(result.(string)), &response)
 	fmt.Println(response)
 	fmt.Println("请求结果", ret)
 }

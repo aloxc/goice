@@ -24,7 +24,7 @@ type Request struct {
 
 type reqeustErrorAndData struct {
 	err  error
-	data []byte
+	data interface{}
 }
 
 //构造用于execute方法的请求
@@ -69,7 +69,7 @@ type IceRequest struct {
 }
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
-func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
+func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error) {
 	var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
@@ -408,17 +408,22 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("string结果", string(data[offset:]))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: data[offset:],
 		}
 		return
 	} else if responseType == ResponseType_String_Array {
+		log.Info("剩余", lastSize)
 		data := make([]byte, lastSize)
+
 		size, err = rw.Read(data)
 		var arr = readStringArray(data)
 		log.Info("字符串数组", arr)
+		//for i,v:=range arr {
+		//	log.Infof("[%d] = %d，[%s]",i, len(v),v)
+		//}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 	} else if responseType == ResponseType_Bool { //通过
 		data := make([]byte, 1)
@@ -427,7 +432,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("bool结果 ", re)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: re,
 		}
 		return
 	} else if responseType == ResponseType_Bool_Array { //通过
@@ -442,7 +447,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("boolArray结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Int8 { //测试通过
@@ -450,7 +455,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		size, err = rw.Read(data)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: utils.BytesToInt8(data),
 		}
 		return
 	} else if responseType == ResponseType_Int8_Array { //测试通过
@@ -467,7 +472,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("int8Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Int16 { //通过
@@ -476,7 +481,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("int16=", utils.BytesToInt16(data))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: utils.BytesToInt16(data),
 		}
 		return
 	} else if responseType == ResponseType_Int16_Array { //通过
@@ -492,7 +497,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("int16Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Int { //通过
@@ -500,7 +505,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		size, err = rw.Read(data)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: utils.BytesToInt(data),
 		}
 		return
 	} else if responseType == ResponseType_Int_Array { //通过
@@ -515,7 +520,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("intArray结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Int64 {
@@ -523,7 +528,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		size, err = rw.Read(data)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: utils.BytesToInt64(data),
 		}
 		return
 	} else if responseType == ResponseType_Int64_Array { //通过
@@ -538,7 +543,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("int64Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Float32 {
@@ -546,7 +551,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		size, err = rw.Read(data)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: utils.BytesToFloat32(data),
 		}
 		return
 	} else if responseType == ResponseType_Float32_Array {
@@ -561,7 +566,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("float32Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Float64 {
@@ -571,7 +576,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("float64:", utils.BytesToFloat64(data))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: utils.BytesToFloat64(data),
 		}
 		return
 	} else if responseType == ResponseType_Float64_Array {
@@ -586,55 +591,55 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		log.Info("float64Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data,
+			data: arr,
 		}
 		return
 	}
-	sizeDefine := 0
-	//realSize := 0
-	//字符串的
-	if lastSize <= 255 {
-		//读取一个字节
-		sizeDefine = 1
-		dataSizeData := make([]byte, sizeDefine)
-		size, err = rw.Read(dataSizeData)
-		if err != nil {
-			errAndData <- &reqeustErrorAndData{
-				err:  err,
-				data: nil,
-			}
-			return
-		}
-		//realSize = int(dataSizeData[0])
-	} else {
-		//读取一个字节-1，跟着4个字节的数据长度（int）
-		sizeDefine = 5
-		dataSizeData := make([]byte, sizeDefine)
-		size, err = rw.Read(dataSizeData)
-		if err != nil {
-			errAndData <- &reqeustErrorAndData{
-				err:  err,
-				data: nil,
-			}
-			return
-		}
-		//realSize = utils.BytesToInt(dataSizeData[1:])
-		//log.Info("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
-	}
-	//log.Info("lastSize=",lastSize)
-	lastSize = lastSize - sizeDefine
-	//log.Info("sizeDefine=" ,sizeDefine)
-	//log.Info("计算数据长度是 ", lastSize)
-	//log.Info("真实数据长度是 ", realSize)
-	data = make([]byte, lastSize) //先读取头
-	size, err = rw.Read(data)
-	if err != nil {
-		errAndData <- &reqeustErrorAndData{
-			err:  err,
-			data: nil,
-		}
-		return
-	}
+	//sizeDefine := 0
+	////realSize := 0
+	////字符串的
+	//if lastSize <= 255 {
+	//	//读取一个字节
+	//	sizeDefine = 1
+	//	dataSizeData := make([]byte, sizeDefine)
+	//	size, err = rw.Read(dataSizeData)
+	//	if err != nil {
+	//		errAndData <- &reqeustErrorAndData{
+	//			err:  err,
+	//			data: nil,
+	//		}
+	//		return
+	//	}
+	//	//realSize = int(dataSizeData[0])
+	//} else {
+	//	//读取一个字节-1，跟着4个字节的数据长度（int）
+	//	sizeDefine = 5
+	//	dataSizeData := make([]byte, sizeDefine)
+	//	size, err = rw.Read(dataSizeData)
+	//	if err != nil {
+	//		errAndData <- &reqeustErrorAndData{
+	//			err:  err,
+	//			data: nil,
+	//		}
+	//		return
+	//	}
+	//	//realSize = utils.BytesToInt(dataSizeData[1:])
+	//	//log.Info("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
+	//}
+	////log.Info("lastSize=",lastSize)
+	//lastSize = lastSize - sizeDefine
+	////log.Info("sizeDefine=" ,sizeDefine)
+	////log.Info("计算数据长度是 ", lastSize)
+	////log.Info("真实数据长度是 ", realSize)
+	//data = make([]byte, lastSize) //先读取头
+	//size, err = rw.Read(data)
+	//if err != nil {
+	//	errAndData <- &reqeustErrorAndData{
+	//		err:  err,
+	//		data: nil,
+	//	}
+	//	return
+	//}
 	errAndData <- &reqeustErrorAndData{
 		err:  err,
 		data: data,

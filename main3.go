@@ -22,7 +22,7 @@ func main3() {
 	request := ice.NewIceRequest("HelloIce", ice.OperatorModeNormal, "sayHi", nil, "")
 	result, err := request.DoRequest(ice.ResponseType_String)
 	reError1(err)
-	fmt.Println("请求结果", string(result))
+	fmt.Println("请求结果", result)
 }
 
 func reError1(err error) {
