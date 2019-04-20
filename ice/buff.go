@@ -32,6 +32,62 @@ func (this *IceBuffer) WriteOperator(operator string) {
 	this.WriteStr(operator) //29+1+8=38
 }
 
+func (this *IceBuffer) WriteBoolArray(arr []bool) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.BoolToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteInt8Array(arr []int8) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.Int8ToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteInt16Array(arr []int16) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.Int16ToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteIntArray(arr []int) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.IntToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteInt32Array(arr []int32) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.Int32ToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteInt64Array(arr []int64) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.Int64ToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteFloat32Array(arr []float32) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.Float32ToBytes(v))
+	}
+}
+
+func (this *IceBuffer) WriteFloat64Array(arr []float64) {
+	this.WriteSize(len(arr))
+	for _, v := range arr {
+		this.Write(utils.Float64ToBytes(v))
+	}
+}
+
 //这个值是总数据长度减去设置完context后的长度
 func (this *IceBuffer) WriteRealSize(siz int) {
 	this.Write(utils.IntToBytes(siz))
@@ -44,7 +100,7 @@ func (this *IceBuffer) WriteSize(v int) {
 		//int8 := -1
 		//this.
 		bytes := utils.IntToBytes(v)
-		this.WriteString("")
+		this.WriteByte(255)
 		this.Write(bytes)
 	} else { //否则扩容一个，写一字节的长度
 		uv := uint8(v)
@@ -169,34 +225,58 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 1 //encoding major
 	total += 1 //encoding manor
 	log.Info("参数类型", reflect.TypeOf(params))
-	//TODO 数组还要处理
+	//if params != nil {
+	//	if len(params.([]interface{})) == 1 {
+	//		params = params.([]interface{})[0]
+	//	} else if len(params.([]interface{})) == 0 {
+	//		params = nil
+	//	}
+	//}
 	switch params.(type) {
 	case string:
-		{
-			if len(params.(string)) > 254 {
-				total += 1 // -1 超过254 就设置个-1和int
-				total += 4 //int
-			} else {
-				total += 1 //param的长度
-			}
-			total += len(params.(string)) // params本身长度
+		total += getArraySize(1, len(params.(string)))
+	case []string:
+		if len(params.([]string)) > 254 {
+			total += 1 // -1 超过254 就设置个-1和int
+			total += 4 //
+		} else {
+			total += 1 //param的长度
+		}
+		for _, sub := range params.([]string) {
+			total += getArraySize(1, len(sub))
 		}
 	case bool:
 		total += 1
+	case []bool:
+		total += getArraySize(1, len(params.([]bool)))
 	case int8:
 		total += 1
+	case []int8:
+		total += getArraySize(1, len(params.([]int8)))
 	case int16:
 		total += 2
+	case []int16:
+		total += getArraySize(2, len(params.([]int16)))
 	case int:
 		total += 4
+	case []int:
+		total += getArraySize(4, len(params.([]int)))
 	case int32:
 		total += 4
+	case []int32:
+		total += getArraySize(4, len(params.([]int32)))
 	case int64:
 		total += 8
+	case []int64:
+		total += getArraySize(8, len(params.([]int64)))
 	case float32:
 		total += 4
+	case []float32:
+		total += getArraySize(4, len(params.([]float32)))
 	case float64:
 		total += 8
+	case []float64:
+		total += getArraySize(8, len(params.([]float64)))
 	case *Request:
 		//fmt.Println("进入到了Request类型计算长度")
 		request := params.(*Request)
@@ -215,6 +295,17 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	}
 	//log.Info("请求长度 ", total, end)
 	return total, total - end
+}
+func getArraySize(per, length int) int {
+	var total = 0
+	if length > 254 {
+		total += 1 // -1 超过254 就设置个-1和int
+		total += 4 //
+	} else {
+		total += 1 //param的长度
+	}
+	total += length * per // params本身长度
+	return total
 }
 
 //连接创建后要发送head请求，计算长度

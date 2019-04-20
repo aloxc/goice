@@ -3,7 +3,6 @@ package ice
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/pool"
 	"github.com/aloxc/goice/utils"
@@ -91,6 +90,15 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 		this.Context = make(map[string]string)
 	}
 	this.Context[string(config.Context_ClientAddr)] = conn.LocalAddr().String() //往后端传客户端地址
+	log.Info("参数长度", len(this.Params.([]interface{})))
+	//if this.Params != nil {
+	//	if len(this.Params.([]interface{})) == 1 {
+	//		this.Params = this.Params.([]interface{})[0]
+	//	} else if len(this.Params.([]interface{})) == 0 {
+	//		this.Params = nil
+	//	}
+	//}
+
 	total, real := buf.Prepare(this.Identity, this.Facet, this.Operator, this.Params, this.Context)
 	buf.Write(*this.head)
 	buf.WriteTotalSize(total)
@@ -102,49 +110,47 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	buf.WriteContext(this.Context)
 	buf.WriteRealSize(real)
 	buf.WriteEncodingVersion(this.encodingVersion)
-	this.writeParams(buf)
-	log.Info(reflect.TypeOf(this.Params))
+	//this.writeParams(buf)
+	log.Info("参数类型", reflect.TypeOf(this.Params))
 	//os.Exit(1)
 	switch this.Params.(type) {
 	//TODO 这些地方还有处理
 	case string:
 		buf.WriteStr(this.Params.(string))
 	case []string:
-		for i := 0; i < len(this.Params.([]string)); i++ {
-
-		}
+		buf.WriteStringArray(this.Params.([]string))
 	case bool:
 		buf.Write(utils.BoolToBytes(this.Params.(bool)))
 	case []bool:
-		buf.Write(utils.BoolToBytes(this.Params.(bool)))
+		buf.WriteBoolArray(this.Params.([]bool))
 	case int8:
 		buf.Write(utils.Int8ToBytes(this.Params.(int8)))
 	case []int8:
-		buf.Write(utils.Int8ToBytes(this.Params.(int8)))
+		buf.WriteInt8Array(this.Params.([]int8))
 	case int16:
 		buf.Write(utils.Int16ToBytes(this.Params.(int16)))
 	case []int16:
-		buf.Write(utils.Int16ToBytes(this.Params.(int16)))
+		buf.WriteInt16Array(this.Params.([]int16))
 	case int:
 		buf.Write(utils.IntToBytes(this.Params.(int)))
 	case []int:
-		buf.Write(utils.IntToBytes(this.Params.(int)))
+		buf.WriteIntArray(this.Params.([]int))
 	case int32:
 		buf.Write(utils.Int32ToBytes(this.Params.(int32)))
 	case []int32:
-		buf.Write(utils.Int32ToBytes(this.Params.(int32)))
+		buf.WriteInt32Array(this.Params.([]int32))
 	case int64:
 		buf.Write(utils.Int64ToBytes(this.Params.(int64)))
 	case []int64:
-		buf.Write(utils.Int64ToBytes(this.Params.(int64)))
+		buf.WriteInt64Array(this.Params.([]int64))
 	case float32:
-		buf.Write(utils.Float32ToByte(this.Params.(float32)))
+		buf.Write(utils.Float32ToBytes(this.Params.(float32)))
 	case []float32:
-		buf.Write(utils.Float32ToByte(this.Params.(float32)))
+		buf.WriteFloat32Array(this.Params.([]float32))
 	case float64:
-		buf.Write(utils.Float64ToByte(this.Params.(float64)))
+		buf.Write(utils.Float64ToBytes(this.Params.(float64)))
 	case []float64:
-		buf.Write(utils.Float64ToByte(this.Params.(float64)))
+		buf.WriteFloat64Array(this.Params.([]float64))
 	case *Request:
 		request := this.Params.(*Request)
 		buf.WriteStr(request.Method)
@@ -174,7 +180,7 @@ func (this *IceRequest) writeParams(buf *IceBuffer) {
 func (this *IceRequest) writeOneParam(buf *IceBuffer) {
 }
 
-func NewIceRequest(name string, mode OperatorMode, operator string, context map[string]string, params interface{}) *IceRequest {
+func NewIceRequest(name string, mode OperatorMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
 	return &IceRequest{
 		name:            name,
 		head:            GetHead(),
@@ -394,46 +400,48 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 	if responseType == ResponseType_String {
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
-		var arr = readStringArray(data)
-		fmt.Println(arr)
+		_, offset := readSize(data)
+		log.Info("string结果", string(data[offset:]))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
-	} else if responseType == ResponseType_String_Array { //处理好了
+		return
+	} else if responseType == ResponseType_String_Array {
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		var arr = readStringArray(data)
-		fmt.Println(arr)
+		log.Info("字符串数组", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
-	} else if responseType == ResponseType_Bool {
+	} else if responseType == ResponseType_Bool { //通过
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
 		var re = utils.BytesToBool(data)
-		log.Info("bool ", re)
+		log.Info("bool结果 ", re)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Bool_Array {
+	} else if responseType == ResponseType_Bool_Array { //通过
 		log.Info(lastSize)
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
-		var arr = make([]bool, lastSize-1)
-		for i := 1; i < lastSize-1; i++ {
-			arr[i] = utils.BytesToBool(data[i : i+1])
+		size, offset := readSize(data)
+		var arr = make([]bool, size)
+		for i := 0; i < lastSize-1; i++ {
+			arr[i] = utils.BytesToBool(data[i+offset : i+1+offset])
 		}
-		log.Info(arr)
+		log.Info("boolArray结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int8 {
+	} else if responseType == ResponseType_Int8 { //测试通过
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
 		errAndData <- &reqeustErrorAndData{
@@ -441,31 +449,49 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int8_Array {
-		data := make([]byte, 1)
+	} else if responseType == ResponseType_Int8_Array { //测试通过
+
+		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		log.Info("读取int8Array", lastSize, size, offset)
+		var arr = make([]int8, size)
+		for i := 0; i < lastSize-1; i++ {
+			log.Info("i =", i)
+			arr[i] = utils.BytesToInt8(data[i+offset : i+1+offset])
+		}
+		log.Info("int8Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int16 {
+	} else if responseType == ResponseType_Int16 { //通过
 		data := make([]byte, 2)
 		size, err = rw.Read(data)
+		log.Info("int16=", utils.BytesToInt16(data))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int16_Array {
-		data := make([]byte, 2)
+	} else if responseType == ResponseType_Int16_Array { //通过
+		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		log.Info("读取int16Array", lastSize, size, offset)
+		var arr = make([]int16, size)
+		for i := 0; i < size; i++ {
+			log.Info("i =", i)
+			arr[i] = utils.BytesToInt16(data[i*2+offset : (i+1)*2+offset])
+		}
+		log.Info("int16Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int {
+	} else if responseType == ResponseType_Int { //通过
 		data := make([]byte, 4)
 		size, err = rw.Read(data)
 		errAndData <- &reqeustErrorAndData{
@@ -473,22 +499,16 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int_Array { //处理好了
+	} else if responseType == ResponseType_Int_Array { //通过
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
-		var nums []int32
-		offset := 0
-		if data[0] == 255 {
-			offset = 5
-			size = utils.BytesToInt(data[1:5])
-		} else {
-			offset = 1
-			size = int(data[0])
-		}
-		nums = make([]int32, size)
+		size, offset := readSize(data)
+		log.Info("读取intArray", lastSize, size, offset)
+		var arr = make([]int, size)
 		for i := 0; i < size; i++ {
-			nums[i] = utils.BytesToInt32(data[i*4+offset : (i+1)*4+offset])
+			arr[i] = utils.BytesToInt(data[i*4+offset : (i+1)*4+offset])
 		}
+		log.Info("intArray结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
@@ -502,9 +522,16 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 			data: data,
 		}
 		return
-	} else if responseType == ResponseType_Int64_Array {
-		data := make([]byte, 8)
+	} else if responseType == ResponseType_Int64_Array { //通过
+		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		log.Info("读取int64Array", lastSize, size, offset)
+		var arr = make([]int, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToInt(data[i*8+offset : (i+1)*8+offset])
+		}
+		log.Info("int64Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
@@ -519,24 +546,40 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		}
 		return
 	} else if responseType == ResponseType_Float32_Array {
-		data := make([]byte, 4)
+		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		log.Info("读取float32Array", lastSize, size, offset)
+		var arr = make([]float32, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToFloat32(data[i*4+offset : (i+1)*4+offset])
+		}
+		log.Info("float32Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
 	} else if responseType == ResponseType_Float64 {
+		log.Info("lastSize = ", lastSize)
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
+		log.Info("float64:", utils.BytesToFloat64(data))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,
 		}
 		return
 	} else if responseType == ResponseType_Float64_Array {
-		data := make([]byte, 8)
+		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		log.Info("读取float64Array", lastSize, size, offset)
+		var arr = make([]float64, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToFloat64(data[i*8+offset : (i+1)*8+offset])
+		}
+		log.Info("float64Array结果", arr)
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: data,

@@ -13,11 +13,8 @@ func init() {
 	config.ReadConfig("")
 }
 func TestUserpostValuestr(t *testing.T) {
-	//goice.sayHi() 测试成功
-	//params := []string{"a", "bc"}
 
-	params := &[]interface{}{"a", "bc", 1}
-	request := ice.NewIceRequest("UserPostIce", ice.OperatorModeNormal, "valuestr", nil, params)
+	request := ice.NewIceRequest("UserPostIce", ice.OperatorModeNormal, "valuestr", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_String)
 	reError(err)
 	if showResult {
@@ -25,10 +22,8 @@ func TestUserpostValuestr(t *testing.T) {
 	}
 }
 
-func TestUserpostGetIntArr(t *testing.T) {
-	//goice.sayHi() 测试成功
-	//params := []string{"a", "bc"}
-
+func TestUserpostGetIntArray(t *testing.T) {
+	//测试成功
 	request := ice.NewIceRequest("UserPostIce", ice.OperatorModeNormal, "getIntArr", nil, 300)
 	result, err := request.DoRequest(ice.ResponseType_Int_Array)
 	reError(err)
@@ -36,10 +31,7 @@ func TestUserpostGetIntArr(t *testing.T) {
 		fmt.Println("请求结果", string(result))
 	}
 }
-func TestUserpostGetStrArr(t *testing.T) {
-	//goice.sayHi() 测试成功
-	//params := []string{"a", "bc"}
-
+func TestUserpostGetStrArray(t *testing.T) {
 	request := ice.NewIceRequest("UserPostIce", ice.OperatorModeNormal, "getStrArr", nil, 300)
 	result, err := request.DoRequest(ice.ResponseType_String_Array)
 	reError(err)
@@ -49,7 +41,7 @@ func TestUserpostGetStrArr(t *testing.T) {
 }
 
 func TestGoiceVoid(t *testing.T) {
-	//goice.vvoid() 测试成功
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "vvoid", nil, "")
 	result, err := request.DoRequest(ice.ResponseType_Void)
 	reError(err)
@@ -57,19 +49,8 @@ func TestGoiceVoid(t *testing.T) {
 		fmt.Println("请求结果", string(result))
 	}
 }
-func TestGoiceVoidUsingContext(t *testing.T) {
-	//goice.vvoid(context) 测试成功
-	context := make(map[string]string)
-	context["name"] = "aloxc"
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "vvoid", context, "")
-	result, err := request.DoRequest(ice.ResponseType_Void)
-	reError(err)
-	if showResult {
-		fmt.Println("请求结果", string(result))
-	}
-}
 func TestGoiceVoidTo(t *testing.T) {
-	//goice.vvoid(string) 测试成功
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "vvoidTo", nil, "aaa")
 	result, err := request.DoRequest(ice.ResponseType_Void)
 	reError(err)
@@ -77,8 +58,49 @@ func TestGoiceVoidTo(t *testing.T) {
 		fmt.Println("请求结果", string(result))
 	}
 }
+
+func TestGoiceGetString(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getStringFrom", nil, "ooye")
+	result, err := request.DoRequest(ice.ResponseType_String)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", string(result))
+	}
+}
+
+func TestGoiceGetStringArr(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getStringArr", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_String_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", string(result))
+	}
+}
+
+func TestGoiceGetStringArrFrom(t *testing.T) {
+	//测试通过aa
+	var arr = []string{"aaa", "bbb", "aaa"}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getStringArrFrom", nil, arr)
+	result, err := request.DoRequest(ice.ResponseType_String_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", string(result))
+	}
+}
+func TestGoicetwo(t *testing.T) {
+	//测试通过aa
+	var arr = []string{"aaa", "bbb", "aaa"}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, arr)
+	result, err := request.DoRequest(ice.ResponseType_String_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", string(result))
+	}
+}
 func TestGoiceGetBool(t *testing.T) {
-	//通过
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getBool", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Bool)
 	reError(err)
@@ -87,7 +109,7 @@ func TestGoiceGetBool(t *testing.T) {
 	}
 }
 func TestGoiceGetBoolFrom(t *testing.T) {
-	//通过
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getBoolFrom", nil, false)
 	result, err := request.DoRequest(ice.ResponseType_Bool)
 	reError(err)
@@ -95,8 +117,8 @@ func TestGoiceGetBoolFrom(t *testing.T) {
 		fmt.Println("请求结果", utils.BytesToBool(result))
 	}
 }
-func TestGoiceGetBoolArr(t *testing.T) {
-	//通过
+func TestGoiceGetBoolArray(t *testing.T) {
+	//测试成功aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getBoolArr", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Bool_Array)
 	reError(err)
@@ -104,8 +126,8 @@ func TestGoiceGetBoolArr(t *testing.T) {
 		fmt.Println("请求结果", utils.BytesToBool(result))
 	}
 }
-func TestGoiceGetBoolArrFrom(t *testing.T) {
-	//通过
+func TestGoiceGetBoolArrayFrom(t *testing.T) {
+	//测试通过aa
 	var arr = make([]bool, 10)
 	for i := 0; i < 10; i++ {
 		if i%2 == 0 {
@@ -114,7 +136,7 @@ func TestGoiceGetBoolArrFrom(t *testing.T) {
 			arr[i] = false
 		}
 	}
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getBoolArr", nil, arr)
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getBoolArrFrom", nil, arr)
 	result, err := request.DoRequest(ice.ResponseType_Bool_Array)
 	reError(err)
 	if showResult {
@@ -122,9 +144,8 @@ func TestGoiceGetBoolArrFrom(t *testing.T) {
 	}
 }
 func TestGoiceGetByte(t *testing.T) {
-	//goice.getShortFrom(int16) 测试成功
-	var i8 int8 = 101
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getByte", nil, i8)
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getByte", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Int8)
 	reError(err)
 	if showResult {
@@ -132,27 +153,27 @@ func TestGoiceGetByte(t *testing.T) {
 	}
 }
 func TestGoiceGetByteFrom(t *testing.T) {
-	//goice.getShortFrom(int16) 测试成功
+	//测试通过aa
 	var i8 int8 = 101
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getByte", nil, i8)
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getByteFrom", nil, i8)
 	result, err := request.DoRequest(ice.ResponseType_Int8)
 	reError(err)
 	if showResult {
 		fmt.Println("请求结果", utils.BytesToInt8(result))
 	}
 }
-func TestGoiceGetByteArr(t *testing.T) {
-	//goice.getShortFrom(int16) 测试成功
+func TestGoiceGetByteArray(t *testing.T) {
+	//测试成功aa
 
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getByteArr", nil, nil)
-	result, err := request.DoRequest(ice.ResponseType_Int8)
+	result, err := request.DoRequest(ice.ResponseType_Int8_Array)
 	reError(err)
 	if showResult {
 		fmt.Println("请求结果", utils.BytesToInt8(result))
 	}
 }
-func TestGoiceGetByteArrFrom(t *testing.T) {
-	//goice.getShortFrom(int16) 测试成功
+func TestGoiceGetByteArrayFrom(t *testing.T) {
+	//测试成功aa
 	var arr = make([]int8, 10)
 	for i := 0; i < 10; i++ {
 		if i%2 == 0 {
@@ -162,15 +183,14 @@ func TestGoiceGetByteArrFrom(t *testing.T) {
 		}
 	}
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getByteArrFrom", nil, arr)
-	result, err := request.DoRequest(ice.ResponseType_Int8)
+	result, err := request.DoRequest(ice.ResponseType_Int8_Array)
 	reError(err)
 	if showResult {
 		fmt.Println("请求结果", utils.BytesToInt8(result))
 	}
 }
 func TestGoiceGetShort(t *testing.T) {
-	//goice.getShortFrom(int16) 测试成功
-	//var i16 int16 = 321
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getShort", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Int16)
 	reError(err)
@@ -179,7 +199,7 @@ func TestGoiceGetShort(t *testing.T) {
 	}
 }
 func TestGoiceGetShortFrom(t *testing.T) {
-	//goice.getShortFrom(context) 测试成功
+	//测试通过aa
 	var i16 int16 = 321
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getShortFrom", nil, i16)
 	result, err := request.DoRequest(ice.ResponseType_Int16)
@@ -188,8 +208,67 @@ func TestGoiceGetShortFrom(t *testing.T) {
 		fmt.Println("请求结果", utils.BytesToInt16(result))
 	}
 }
+func TestGoiceGetShortArray(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getShortArr", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_Int16_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt16(result))
+	}
+}
+func TestGoiceGetShortArrayFrom(t *testing.T) {
+	//测试成功aa
+	var arr = []int16{100, 1000, 10000}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getShortArrFrom", nil, arr)
+	result, err := request.DoRequest(ice.ResponseType_Int16_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt16(result))
+	}
+}
+
+func TestGoiceGetInt(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getInt", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_Int16)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt16(result))
+	}
+}
+func TestGoiceGetIntFrom(t *testing.T) {
+	//测试通过aa
+	var i16 int = 321
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getIntFrom", nil, i16)
+	result, err := request.DoRequest(ice.ResponseType_Int16)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt16(result))
+	}
+}
+func TestGoiceGetIntArray(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getIntArr", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_Int_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt16(result))
+	}
+}
+func TestGoiceGetIntArrayFrom(t *testing.T) {
+	//测试成功aa
+	var arr = []int{100, 1000, 10000}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getIntArrFrom", nil, arr)
+	result, err := request.DoRequest(ice.ResponseType_Int_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt16(result))
+	}
+}
+
 func TestGoiceGetLong(t *testing.T) {
-	//通过
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getLong", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Int64)
 	reError(err)
@@ -198,7 +277,7 @@ func TestGoiceGetLong(t *testing.T) {
 	}
 }
 func TestGoiceGetLongFrom(t *testing.T) {
-	//通过
+	//测试通过aa
 	var i64 int64 = 922337203685477581
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getLongFrom", nil, i64)
 	result, err := request.DoRequest(ice.ResponseType_Int64)
@@ -207,19 +286,39 @@ func TestGoiceGetLongFrom(t *testing.T) {
 		fmt.Println("请求结果", utils.BytesToInt64(result))
 	}
 }
-func TestGoiceGetFloat(t *testing.T) {
-	//通过
-	var f float32 = 234.43
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getFloat", nil, f)
+
+func TestGoiceGetArrLong(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getLongArr", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_Int64_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt64(result))
+	}
+}
+func TestGoiceGetLongArrFrom(t *testing.T) {
+	//测试通过aa
+	var i64 = []int64{922337203685477581, 5, 200000000}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getLongArrFrom", nil, i64)
+	result, err := request.DoRequest(ice.ResponseType_Int64_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.BytesToInt64(result))
+	}
+}
+
+func TestGoiceGetFloat32(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getFloat", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Float32)
 	reError(err)
 	if showResult {
 		fmt.Println("请求结果", utils.ByteToFloat32(result))
 	}
 }
-func TestGoiceGetFloatFrom(t *testing.T) {
-	//通过
-	var f float32 = 23444444444.43
+func TestGoiceGetFloat32From(t *testing.T) {
+	//测试通过aa
+	var f float32 = 444.43
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getFloatFrom", nil, f)
 	result, err := request.DoRequest(ice.ResponseType_Float32)
 	reError(err)
@@ -227,23 +326,61 @@ func TestGoiceGetFloatFrom(t *testing.T) {
 		fmt.Println("请求结果", utils.ByteToFloat32(result))
 	}
 }
-func TestGoiceGetDouble(t *testing.T) {
-	//通过
+func TestGoiceGetFloat32Arr(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getFloatArr", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_Float32_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.ByteToFloat32(result))
+	}
+}
+func TestGoiceGetFloatArr32From(t *testing.T) {
+	//测试通过aa
+	var f = []float32{33.43, 22, 3, 43}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getFloatArrFrom", nil, f)
+	result, err := request.DoRequest(ice.ResponseType_Float32_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.ByteToFloat32(result))
+	}
+}
+func TestGoiceGetFloat64(t *testing.T) {
+	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getDouble", nil, nil)
 	result, err := request.DoRequest(ice.ResponseType_Float64)
 	reError(err)
 	if showResult {
-		fmt.Println("请求结果", utils.ByteToFloat64(result))
+		fmt.Println("请求结果", utils.ByteToFloat32(result))
 	}
 }
-func TestGoiceGetDoubleFrom(t *testing.T) {
-	//通过
-	var f float64 = 43.43
+func TestGoiceGetFloat64From(t *testing.T) {
+	//测试通过aa
+	var f float64 = 4444.43
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getDoubleFrom", nil, f)
 	result, err := request.DoRequest(ice.ResponseType_Float64)
 	reError(err)
 	if showResult {
-		fmt.Println("请求结果", utils.ByteToFloat64(result))
+		fmt.Println("请求结果", utils.ByteToFloat32(result))
+	}
+}
+func TestGoiceGetFloat64Arr(t *testing.T) {
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getDoubleArr", nil, nil)
+	result, err := request.DoRequest(ice.ResponseType_Float64_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.ByteToFloat32(result))
+	}
+}
+func TestGoiceGetFloatArr64From(t *testing.T) {
+	//测试通过aa
+	var f = []float64{2.32, 44444.12, 344}
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "getDoubleArrFrom", nil, f)
+	result, err := request.DoRequest(ice.ResponseType_Float64_Array)
+	reError(err)
+	if showResult {
+		fmt.Println("请求结果", utils.ByteToFloat32(result))
 	}
 }
 

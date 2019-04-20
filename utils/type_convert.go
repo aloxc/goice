@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"math"
 )
+
 //整形转换成字节
 func Int8ToBytes(n int8) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
@@ -21,6 +22,7 @@ func BytesToInt8(b []byte) int8 {
 
 	return x
 }
+
 //整形转换成字节
 func Int16ToBytes(n int16) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
@@ -54,6 +56,7 @@ func BytesToBool(b []byte) bool {
 
 	return x
 }
+
 //整形转换成字节
 func IntToBytes(n int) []byte {
 	x := int32(n)
@@ -71,6 +74,7 @@ func BytesToInt(b []byte) int {
 
 	return int(x)
 }
+
 //整形转换成字节
 func Int32ToBytes(n int32) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
@@ -99,7 +103,34 @@ func Int64ToBytes(n int64) []byte {
 	binary.Write(bytesBuffer, binary.LittleEndian, n)
 	return bytesBuffer.Bytes()
 }
-func IntToByte(i int) byte{
+func Float32ToBytes(n float32) []byte {
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.LittleEndian, n)
+	return bytesBuffer.Bytes()
+}
+func Float64ToBytes(n float64) []byte {
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.LittleEndian, n)
+	return bytesBuffer.Bytes()
+}
+func BytesToFloat32(b []byte) float32 {
+	bytesBuffer := bytes.NewBuffer(b)
+
+	var x float32
+	binary.Read(bytesBuffer, binary.LittleEndian, &x)
+
+	return x
+}
+func BytesToFloat64(b []byte) float64 {
+	bytesBuffer := bytes.NewBuffer(b)
+
+	var x float64
+	binary.Read(bytesBuffer, binary.LittleEndian, &x)
+
+	return x
+}
+
+func IntToByte(i int) byte {
 	return uint8(i)
 }
 func Float32ToByte(float float32) []byte {
