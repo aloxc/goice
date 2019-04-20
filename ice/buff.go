@@ -2,7 +2,10 @@ package ice
 
 import (
 	"bufio"
+	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/utils"
+	"github.com/siddontang/go-log/log"
+	"reflect"
 )
 
 type IceBuffer struct {
@@ -101,8 +104,8 @@ func (this *IceBuffer) WriteRequestId(requestId int) {
 	this.Write(utils.IntToBytes(requestId)) //14+4=18
 }
 func (this *IceBuffer) WriteIdentity(identity *Identity) {
-	this.WriteStr(identity.Name)     //18+1+8=27
-	this.WriteStr(identity.Category) //27+1=28
+	this.WriteStr(identity.name)     //18+1+8=27
+	this.WriteStr(identity.category) //27+1=28
 }
 func (this *IceBuffer) WriteHead() {
 	var magic = []byte{0x49, 0x63, 0x65, 0x50}
@@ -122,6 +125,7 @@ func (this *IceBuffer) WriteHead() {
 	this.Write(requestHead) //10字节
 }
 
+//每次请求要计算请求长度
 //TODO 多参还没看怎么处理的，当前就是一个参数的
 func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, params interface{}, context map[string]string) (total, real int) {
 	total = 0
@@ -129,10 +133,10 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 4                  //total(int = 4)
 	total += 4                  //requestId(int = 4)
 	total += 1                  //identity.Name的长度(byte = 1)
-	total += len(identity.Name) //identity.Name本身(len(identity.Name))
+	total += len(identity.name) //identity.Name本身(len(identity.name))
 	total += 1                  //identity.Category的长度(byte = 1)
-	if len(identity.Category) != 0 {
-		total += len(identity.Category) //identity.Name本身(len(identity.Category))
+	if len(identity.category) != 0 {
+		total += len(identity.category) //identity.Name本身(len(identity.category))
 	}
 	if len(facet) == 0 {
 		total += 1 //facet的长度(byte = 1)
@@ -142,7 +146,7 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 		total += len(facet) //facet数组[0]的本身(len(facet))
 	}
 	total += 1             //operator的长度(byte = 1)
-	total += len(operator) //operator数组的本身(len(operator))
+	total += len(operator) //operator的本身的长度
 	total += 1             //mode的长度(byte = 1)
 	if context == nil || len(context) == 0 {
 		total += 1 //context的长度(byte = 1)
@@ -164,7 +168,8 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 4 //整形后的数据长度（int = 4 ）
 	total += 1 //encoding major
 	total += 1 //encoding manor
-	//fmt.Println(reflect.TypeOf(params))
+	log.Info("参数类型", reflect.TypeOf(params))
+	//TODO 数组还要处理
 	switch params.(type) {
 	case string:
 		{
@@ -208,6 +213,57 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 		}
 
 	}
+	//log.Info("请求长度 ", total, end)
+	return total, total - end
+}
+
+//连接创建后要发送head请求，计算长度
+func PrepareHead(identity *Identity, facet, module string, context map[string]string) (total, real int) {
+	total = 0
+	total += 10                 //head
+	total += 4                  //total(int = 4)
+	total += 4                  //requestId(int = 4)
+	total += 1                  //identity.Name的长度(byte = 1)
+	total += len(identity.name) //identity.Name本身(len(identity.name))
+	total += 1                  //identity.Category的长度(byte = 1)
+	if len(identity.category) != 0 {
+		total += len(identity.category) //identity.Name本身(len(identity.category))
+	}
+	if len(facet) == 0 {
+		total += 1 //facet的长度(byte = 1)
+	} else {
+		total += 1          //facet数组的长度(byte = 1)
+		total += 1          //facet数组[0]的长度(byte = 1)
+		total += len(facet) //facet数组[0]的本身(len(facet))
+	}
+
+	total += 1                   //operator的长度(byte = 1、len(operator))
+	total += len(config.Ice_isA) //operator的本身的长度
+	total += 1                   //mode的长度(byte = 1)
+	if context == nil || len(context) == 0 {
+		total += 1 //context的长度(byte = 1)
+	} else {
+		if len(context) > 254 {
+			total += 1 // -1 超过254 就设置个-1和int
+			total += 4 //int
+		} else {
+			total += 1 //param的长度
+			for k, v := range context {
+				total += 1      // key
+				total += 1      // value
+				total += len(k) // key 本身
+				total += len(v) // value 本身
+			}
+		}
+	}
+	end := total
+	//数据整形 java 中 BasicStream.endWriteEncaps方法，大约344行，写此后（39位后的）的数据长度，总数据长度减去39
+	total += 4 //整形后的数据长度（int = 4 ）
+	total += 1 //encoding major
+	total += 1 //encoding manor
+	//::module名（slice中定义的）::服务名（slice中定义的interface）
+	total += 1                                        // (::module::name)的长度
+	total += 2 + len(module) + 2 + len(identity.name) // 模块长度
 	//log.Info("请求长度 ", total, end)
 	return total, total - end
 }

@@ -1,31 +1,26 @@
-package main
+package pool
 
 import (
 	"errors"
-	"flag"
 	"fmt"
-	"github.com/aloxc/goice/pool"
 	"net"
 	"strconv"
 	"sync"
+	"testing"
 	"time"
 )
 
-//声明一些全局变量
-//初始化一个pool
-
-func main() {
-	flag.Parse()
+func TestNewGPool(t *testing.T) {
 	// 工厂方法创建连接
 	fact := func() (net.Conn, error) { return net.DialTimeout("tcp", ":6379", time.Second*5) }
 
 	// 创建config
-	poolConfig := &pool.PoolConfig{
+	poolConfig := &PoolConfig{
 		InitCap: 3,
 		MaxCap:  10,
 		Factory: fact,
 	}
-	p, err := pool.NewGPool(poolConfig)
+	p, err := NewGPool(poolConfig)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -36,7 +31,7 @@ func main() {
 	wg.Add(count)
 	// return a connection to gpool
 	for i := 0; i < count; i++ {
-		time.Sleep(time.Millisecond * 50)
+		time.Sleep(time.Millisecond * 10)
 		go func(i int) {
 			conn, err := p.Get()
 			if err != nil {
@@ -47,12 +42,10 @@ func main() {
 			wg.Done()
 			defer p.Return(conn)
 
-			//fmt.Printf("i = %d,active = %d,idle = %d,%d\n",i,p.Len(),p.Idle(),&conn)
 		}(i)
 	}
 
 	wg.Wait()
-	//time.Sleep(time.Second *1000)
 }
 func set(conn *net.Conn, i int) {
 	req := MultiBulkMarshal("SET", "a"+strconv.Itoa(i), "abcd-"+strconv.Itoa(i))
@@ -79,12 +72,8 @@ func set(conn *net.Conn, i int) {
 	if err != nil {
 		fmt.Println("get 异常", err)
 	}
-	//fmt.Println(len(p))
 	var s = strconv.Itoa(i)
 	fmt.Println("get =" + string(p[4:(9+len(s))]))
-
-	//bytes, err = ReadLine(p)
-	//fmt.Println("get =" + string(bytes))
 
 }
 func MultiBulkMarshal(args ...string) string {

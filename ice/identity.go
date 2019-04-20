@@ -1,26 +1,27 @@
 package ice
 
 type Identity struct {
-	Name string
-	Category string
+	name     string
+	category string
 }
 
 var identityMap = make(map[string]*Identity)
 
-func GetIdentity(name string) *Identity {
-	if v,ok := identityMap[name];ok{
-		return v
-	}
-	return nil
-}
-func NewIdentity(name,category string) *Identity {
-	if v,ok := identityMap[name];ok{
+func GetIdentity(name, category string) *Identity {
+	if v, ok := identityMap[name]; ok {
 		return v
 	}
 	identity := &Identity{
-		Name:name,
-		Category:category,
+		name:     name,
+		category: category,
 	}
 	identityMap[name] = identity
 	return identity
+}
+func (this *Identity) GetIdentityName() string {
+	return this.name
+}
+
+func (this *Identity) GetIdentityCategory() string {
+	return this.category
 }

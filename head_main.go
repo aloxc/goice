@@ -1,4 +1,5 @@
 package main
+
 //发送40字节的head试试
 
 import (
@@ -9,6 +10,7 @@ import (
 	"net"
 	"time"
 )
+
 var (
 	ProtocolMajor         byte = 1
 	ProtocolMinor         byte = 0
@@ -21,7 +23,7 @@ var (
 	//
 	// The Ice protocol message types
 	//
-	RequestMsg            byte = 0
+	RequestMsg byte = 0
 
 	RequestBatchMsg       byte = 1
 	ReplyMsg              byte = 2
@@ -29,13 +31,12 @@ var (
 	CloseConnectionMsg    byte = 4
 
 	Byte0 byte = 0
-
 )
 
 func main1() {
 	var remoteAddress, _ = net.ResolveTCPAddr("tcp4", "127.0.0.1:1888") //生成一个net.TcpAddr对像。
 	var conn, err = net.DialTCP("tcp4", nil, remoteAddress)             //传入协议，本机地址（传了nil），远程地址，获取连接。
-	if err != nil { //如果连接失败。则返回。
+	if err != nil {                                                     //如果连接失败。则返回。
 		fmt.Println("连接出错：", err)
 	}
 	var remoteIpAddress = conn.RemoteAddr()  //获取IP地址的方法。
@@ -100,57 +101,52 @@ func main1() {
 		ProtocolEncodingMajor,
 		ProtocolEncodingMinor,
 		RequestMsg,
-		1}                    // Compression status. 0：不支持压缩，1：支持压缩，2：已经压缩
-
+		1} // Compression status. 0：不支持压缩，1：支持压缩，2：已经压缩
 
 	var facet string
-	var buf =ice.NewIceBuff(rw)
+	var buf = ice.NewIceBuff(rw)
 	buf.Write(requestHdr1) // 18字节
 	buf.Write(utils.IntToBytes(69))
 	buf.Write(utils.IntToBytes(8))
-	identity := ice.Identity{
-		Name:"HelloIce",
-	}
-	buf.WriteStr(identity.Name)//18+1+8=27
-	buf.WriteStr(identity.Category)//27+1=28
 
-	if len(facet) == 0{
-		buf.WriteByte(0)//28+1=29
-	}else{
+	identity := ice.GetIdentity("HelloIce", "")
+	buf.WriteStr(identity.GetIdentityName())     //18+1+8=27
+	buf.WriteStr(identity.GetIdentityCategory()) //27+1=28
+
+	if len(facet) == 0 {
+		buf.WriteByte(0) //28+1=29
+	} else {
 		facets := []string{facet}
 		buf.WriteStringArray(facets)
 	}
 	operator := "ice_isA"
-	buf.WriteStr(operator)//29+1+7=37
+	buf.WriteStr(operator) //29+1+7=37
 	var mode byte = 1
-	buf.WriteByte(mode)//37+1=38
+	buf.WriteByte(mode) //37+1=38
 	context := make(map[string]string)
-	buf.WriteStringMap(context)//38+1=39
+	buf.WriteStringMap(context) //38+1=39
 	//buf.WriteByte(0)//39+1=40
 	//buf.WriteByte(0)//40+1=41
 	//buf.WriteByte(0)//41+1=42
 	//buf.WriteByte(0)//42+1=43
 	buf.Write(utils.IntToBytes(30))
 
-	buf.WriteByte(1)//encoding major 43+1=44
-	buf.WriteByte(1)//encoding minor 44+1=45
+	buf.WriteByte(1) //encoding major 43+1=44
+	buf.WriteByte(1) //encoding minor 44+1=45
 
-
-	buf.WriteStr("::service::HelloService")//45+1+23=69
+	buf.WriteStr("::service::HelloService") //45+1+23=69
 
 	//数据整形 java 中 BasicStream.endWriteEncaps方法，大约344行，写此后（39位后的）的数据长度，总数据长度减去39
 	//还要设置压缩位，见requestHdr里面关于压缩位设置。如果压缩的话，第10位设置为2，并且11 12 13 14设置为压缩后的长度。
 
 	//需要重写requestId，到15 16 17 18 这四位 对应java中 ConnectionI的sendAsyncRequest方法，大约是386行
 
-
-
 	buf.Flush()
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 
-	var head = make([]byte,14)//先读取头
+	var head = make([]byte, 14) //先读取头
 	size, err := rw.Read(head)
-	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n" ,size,utils.BytesToInt(head[10:]),utils.BytesToInt(head[10:]))
+	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n", size, utils.BytesToInt(head[10:]), utils.BytesToInt(head[10:]))
 	var magic = [4]byte{}
 	magic[0] = head[0]
 	magic[1] = head[1]
@@ -162,21 +158,20 @@ func main1() {
 	emn := head[7]
 	rmsg := head[8]
 	zip := head[9]
-	for i,v:= range magic{
-		fmt.Printf("magic[%d]=%d\n",i,v)
+	for i, v := range magic {
+		fmt.Printf("magic[%d]=%d\n", i, v)
 	}
-	fmt.Printf("协议版本major = %d,minor = %d\n",pmj,pmn)
-	fmt.Printf("编码版本major = %d,minor = %d\n",emj,emn)
-	fmt.Printf("msg = %d\n",rmsg)
-	fmt.Printf("压缩标示 = %d\n",zip)
-	fmt.Printf("数据长度 = %d\n",utils.BytesToInt(head[10:]))
-	var data = make([]byte,40)//先读取头
+	fmt.Printf("协议版本major = %d,minor = %d\n", pmj, pmn)
+	fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
+	fmt.Printf("msg = %d\n", rmsg)
+	fmt.Printf("压缩标示 = %d\n", zip)
+	fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:]))
+	var data = make([]byte, 40) //先读取头
 	size, err = rw.Reader.Read(data)
 	requestId := utils.BytesToInt(data[0:4])
-	fmt.Printf("请求ID = %d\n",requestId)
+	fmt.Printf("请求ID = %d\n", requestId)
 
-
-	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n" ,size,utils.BytesToInt(data[0:4]),utils.BytesToInt(data[0:4]))
+	fmt.Printf("头 size = %d ,requestId = %d ,msg.size = %d \n", size, utils.BytesToInt(data[0:4]), utils.BytesToInt(data[0:4]))
 	//for size == len(data) {
 	//	fmt.Println("size " ,size)
 	//}
@@ -189,10 +184,8 @@ func main1() {
 	//case err != nil:
 	//	fmt.Println("读取出错")
 	//}
-	fmt.Println("读取到了 size=",size)
+	fmt.Println("读取到了 size=", size)
 	//fmt.Println("数据长度 len=",len(data))
 	//fmt.Println("数据",s)
 	time.Sleep(2 * time.Second)
 }
-
-

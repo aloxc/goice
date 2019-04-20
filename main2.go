@@ -28,7 +28,7 @@ func main2() {
 	buf.WriteHead()
 	buf.WriteTotalSize(49)
 	buf.WriteRequestId(3)
-	buf.WriteIdentity(ice.NewIdentity("HelloIce", ""))
+	buf.WriteIdentity(ice.GetIdentity("HelloIce", ""))
 	buf.WriteFacet(facet)
 	buf.WriteOperator("sayHello")
 	mode = 0

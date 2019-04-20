@@ -11,7 +11,7 @@ var requestHead = []byte{magic[0],
 	GetDefaultProtocalEncodingVersion().Major,
 	GetDefaultProtocalEncodingVersion().Minor,
 	msgType,
-	1} // Compression status. 0：不支持压缩，1：支持压缩，2：已经压缩
+	0} // Compression status. 0：不支持压缩，1：支持压缩，2：已经压缩
 //还要设置压缩位，见requestHdr里面关于压缩位设置。如果压缩的话，第10位设置为2，并且11 12 13 14设置为压缩后的长度。
 
 var connHead = []byte{magic[0],
@@ -23,7 +23,7 @@ var connHead = []byte{magic[0],
 	GetDefaultProtocalEncodingVersion().Major,
 	GetDefaultProtocalEncodingVersion().Minor,
 	msgType,
-	1}
+	0}
 
 func GetHead() *[]byte {
 	return &requestHead

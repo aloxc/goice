@@ -12,12 +12,18 @@ default:
   RetryCount: 3
 
 servers:
-  - HelloIce:
+  - Goice:
       MaxClientSize: 100
       WarnClientSize: 30
       Address: 127.0.0.1:1888
       DefaultClientSize : 50
-  - ArticleIce:
+      Module: goiceinter
+      Name: Goice
+      IdentityName: Goice
+  - UserPostIce:
       MessageMaxSize: 200
       ConnectTimeout: 2
-      Address: localhost:1888
+      Address: localhost:1889
+      Module: user::post
+      Name: Userpost
+      IdentityName: UserPost

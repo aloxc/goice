@@ -8,6 +8,7 @@ import (
 	"github.com/siddontang/go/log"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -16,6 +17,9 @@ import (
 //为了方便类型设置别名，
 type ConfigNodeName string
 type ContextName string
+
+//ice启动后要发送head请求，方法名是ice_isA
+type ICE_ISA string
 
 const (
 	OperateTimeout     ConfigNodeName = "OperateTimeout"
@@ -31,12 +35,24 @@ const (
 	RetryCount         ConfigNodeName = "RetryCount"
 	Address            ConfigNodeName = "Address"
 	Report             ConfigNodeName = "Report"
+	Module             ConfigNodeName = "Module"
+	Name               ConfigNodeName = "Name"
+	IdentityName       ConfigNodeName = "IdentityName"
 	Context_ClientAddr ContextName    = "clientAddr"
+	Ice_isA            ICE_ISA        = "ice_isA"
 )
 
-var HttpPort = 0
-var ReportType = 0
-var ConfigMap = make(map[string]map[ConfigNodeName]interface{})
+var (
+	HttpPort   = 0                                               // monitor web ui端口
+	ReportType = 0                                               //报警类型
+	ConfigMap  = make(map[string]map[ConfigNodeName]interface{}) //保存配置
+	//servers下面的子节点必须配置的节点及描述列表
+	mustConfigNode = map[ConfigNodeName]string{
+		Address:      "接口服务器地址及ip",
+		IdentityName: "ice服务端暴露的唯一标识",
+		Module:       "对应.ice文件中若干个module使用::连接起来，例如user::post",
+		Name:         "对应.ice文件中interface的name"}
+)
 
 func ReadConfig(configFile string) {
 	log.Info("开始读取配置")
@@ -123,7 +139,7 @@ func ReadConfig(configFile string) {
 				case int:
 					mp2[ConfigNodeName(fileKey)] = fileValue.(int)
 				case string:
-					mp2[ConfigNodeName(fileKey)] = fileValue.(string)
+					mp2[ConfigNodeName(fileKey)] = strings.ReplaceAll(fileValue.(string), " ", "")
 				}
 			}
 			for inputKey, inputValue := range cmdConfig {
@@ -136,13 +152,14 @@ func ReadConfig(configFile string) {
 					mp2[inputKey] = inputValue.(bool)
 				}
 			}
-			if _, ok := mp2[Address]; !ok {
-				log.Errorf("服务[%s]必须设置Address属性", k1)
-				fmt.Printf("服务[%s]必须设置Address属性，重新设置后再次尝试\n", k1)
-				return
-			} else {
-				ConfigMap[k1] = mp2
+			for mustKey, mustValue := range mustConfigNode {
+				if _, ok := mp2[mustKey]; !ok {
+					log.Infof("服务[%s]必须设置[%s]属性，%s", k1, string(mustKey), mustValue)
+					os.Exit(0)
+					//return
+				}
 			}
+			ConfigMap[k1] = mp2
 		}
 	}
 	//PrintConfig()
