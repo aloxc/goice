@@ -225,74 +225,72 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 1 //encoding major
 	total += 1 //encoding manor
 	log.Info("参数类型", reflect.TypeOf(params))
-	//if params != nil {
-	//	if len(params.([]interface{})) == 1 {
-	//		params = params.([]interface{})[0]
-	//	} else if len(params.([]interface{})) == 0 {
-	//		params = nil
-	//	}
-	//}
-	switch params.(type) {
-	case string:
-		total += getArraySize(1, len(params.(string)))
-	case []string:
-		if len(params.([]string)) > 254 {
-			total += 1 // -1 超过254 就设置个-1和int
-			total += 4 //
-		} else {
-			total += 1 //param的长度
-		}
-		for _, sub := range params.([]string) {
-			total += getArraySize(1, len(sub))
-		}
-	case bool:
-		total += 1
-	case []bool:
-		total += getArraySize(1, len(params.([]bool)))
-	case int8:
-		total += 1
-	case []int8:
-		total += getArraySize(1, len(params.([]int8)))
-	case int16:
-		total += 2
-	case []int16:
-		total += getArraySize(2, len(params.([]int16)))
-	case int:
-		total += 4
-	case []int:
-		total += getArraySize(4, len(params.([]int)))
-	case int32:
-		total += 4
-	case []int32:
-		total += getArraySize(4, len(params.([]int32)))
-	case int64:
-		total += 8
-	case []int64:
-		total += getArraySize(8, len(params.([]int64)))
-	case float32:
-		total += 4
-	case []float32:
-		total += getArraySize(4, len(params.([]float32)))
-	case float64:
-		total += 8
-	case []float64:
-		total += getArraySize(8, len(params.([]float64)))
-	case *Request:
-		//fmt.Println("进入到了Request类型计算长度")
-		request := params.(*Request)
-		total += 1
-		//fmt.Println("方法:",request.Method)
-		total += len(request.Method)
-		total += 1
-		for k, v := range request.Params {
-			//fmt.Println("参数:",k,v)
-			total += 1
-			total += len(k)
-			total += 1
-			total += len(v)
-		}
+	if params != nil {
+		for _, param := range params.([]interface{}) {
+			switch param.(type) {
+			case string:
+				total += getArraySize(1, len(param.(string)))
+			case []string:
+				if len(param.([]string)) > 254 {
+					total += 1 // -1 超过254 就设置个-1和int
+					total += 4 //
+				} else {
+					total += 1 //param的长度
+				}
+				for _, sub := range param.([]string) {
+					total += getArraySize(1, len(sub))
+				}
+			case bool:
+				total += 1
+			case []bool:
+				total += getArraySize(1, len(param.([]bool)))
+			case int8:
+				total += 1
+			case []int8:
+				total += getArraySize(1, len(param.([]int8)))
+			case int16:
+				total += 2
+			case []int16:
+				total += getArraySize(2, len(param.([]int16)))
+			case int:
+				total += 4
+			case []int:
+				total += getArraySize(4, len(param.([]int)))
+			case int32:
+				total += 4
+			case []int32:
+				total += getArraySize(4, len(param.([]int32)))
+			case int64:
+				total += 8
+			case []int64:
+				total += getArraySize(8, len(param.([]int64)))
+			case float32:
+				total += 4
+			case []float32:
+				total += getArraySize(4, len(param.([]float32)))
+			case float64:
+				total += 8
+			case []float64:
+				total += getArraySize(8, len(param.([]float64)))
+			case *Request:
+				//fmt.Println("进入到了Request类型计算长度")
+				request := param.(*Request)
+				total += 1
+				//fmt.Println("方法:",request.Method)
+				total += len(request.Method)
+				total += 1
+				for k, v := range request.Params {
+					//fmt.Println("参数:",k,v)
+					total += 1
+					total += len(k)
+					total += 1
+					total += len(v)
+				}
 
+			}
+		}
 	}
+
 	//log.Info("请求长度 ", total, end)
 	return total, total - end
 }

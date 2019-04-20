@@ -14,7 +14,7 @@ func init() {
 }
 func TestUserpostValuestr(t *testing.T) {
 
-	request := ice.NewIceRequest("UserPostIce", ice.OperatorModeNormal, "valuestr", nil, nil)
+	request := ice.NewIceRequest("UserPostIce", ice.OperatorModeNormal, "valuestr", nil, "name", "aloxc")
 	result, err := request.DoRequest(ice.ResponseType_String)
 	reError(err)
 	if showResult {
@@ -89,11 +89,11 @@ func TestGoiceGetStringArrFrom(t *testing.T) {
 		fmt.Println("请求结果", string(result))
 	}
 }
+
 func TestGoicetwo(t *testing.T) {
 	//测试通过aa
-	var arr = []string{"aaa", "bbb", "aaa"}
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, arr)
-	result, err := request.DoRequest(ice.ResponseType_String_Array)
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "aaa", "bbb")
+	result, err := request.DoRequest(ice.ResponseType_String)
 	reError(err)
 	if showResult {
 		fmt.Println("请求结果", string(result))

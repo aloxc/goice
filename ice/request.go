@@ -113,49 +113,53 @@ func (this *IceRequest) DoRequest(responseType ResponseType) ([]byte, error) {
 	//this.writeParams(buf)
 	log.Info("参数类型", reflect.TypeOf(this.Params))
 	//os.Exit(1)
-	switch this.Params.(type) {
-	//TODO 这些地方还有处理
-	case string:
-		buf.WriteStr(this.Params.(string))
-	case []string:
-		buf.WriteStringArray(this.Params.([]string))
-	case bool:
-		buf.Write(utils.BoolToBytes(this.Params.(bool)))
-	case []bool:
-		buf.WriteBoolArray(this.Params.([]bool))
-	case int8:
-		buf.Write(utils.Int8ToBytes(this.Params.(int8)))
-	case []int8:
-		buf.WriteInt8Array(this.Params.([]int8))
-	case int16:
-		buf.Write(utils.Int16ToBytes(this.Params.(int16)))
-	case []int16:
-		buf.WriteInt16Array(this.Params.([]int16))
-	case int:
-		buf.Write(utils.IntToBytes(this.Params.(int)))
-	case []int:
-		buf.WriteIntArray(this.Params.([]int))
-	case int32:
-		buf.Write(utils.Int32ToBytes(this.Params.(int32)))
-	case []int32:
-		buf.WriteInt32Array(this.Params.([]int32))
-	case int64:
-		buf.Write(utils.Int64ToBytes(this.Params.(int64)))
-	case []int64:
-		buf.WriteInt64Array(this.Params.([]int64))
-	case float32:
-		buf.Write(utils.Float32ToBytes(this.Params.(float32)))
-	case []float32:
-		buf.WriteFloat32Array(this.Params.([]float32))
-	case float64:
-		buf.Write(utils.Float64ToBytes(this.Params.(float64)))
-	case []float64:
-		buf.WriteFloat64Array(this.Params.([]float64))
-	case *Request:
-		request := this.Params.(*Request)
-		buf.WriteStr(request.Method)
-		buf.WriteStringMap(request.Params)
+	if this.Params != nil {
+		for _, param := range this.Params.([]interface{}) {
+			switch param.(type) {
+			case string:
+				buf.WriteStr(param.(string))
+			case []string:
+				buf.WriteStringArray(param.([]string))
+			case bool:
+				buf.Write(utils.BoolToBytes(param.(bool)))
+			case []bool:
+				buf.WriteBoolArray(param.([]bool))
+			case int8:
+				buf.Write(utils.Int8ToBytes(param.(int8)))
+			case []int8:
+				buf.WriteInt8Array(param.([]int8))
+			case int16:
+				buf.Write(utils.Int16ToBytes(param.(int16)))
+			case []int16:
+				buf.WriteInt16Array(param.([]int16))
+			case int:
+				buf.Write(utils.IntToBytes(param.(int)))
+			case []int:
+				buf.WriteIntArray(param.([]int))
+			case int32:
+				buf.Write(utils.Int32ToBytes(param.(int32)))
+			case []int32:
+				buf.WriteInt32Array(param.([]int32))
+			case int64:
+				buf.Write(utils.Int64ToBytes(param.(int64)))
+			case []int64:
+				buf.WriteInt64Array(param.([]int64))
+			case float32:
+				buf.Write(utils.Float32ToBytes(param.(float32)))
+			case []float32:
+				buf.WriteFloat32Array(param.([]float32))
+			case float64:
+				buf.Write(utils.Float64ToBytes(param.(float64)))
+			case []float64:
+				buf.WriteFloat64Array(param.([]float64))
+			case *Request:
+				request := param.(*Request)
+				buf.WriteStr(request.Method)
+				buf.WriteStringMap(request.Params)
+			}
+		}
 	}
+
 	buf.Flush()
 	//var timeoutCh chan int
 
