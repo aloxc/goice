@@ -10,8 +10,6 @@ import (
 	"github.com/siddontang/go/log"
 	"io"
 	"net"
-	"reflect"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,7 +20,7 @@ type Request struct {
 	Params map[string]string
 }
 
-var showResult = true
+var showResult = false
 
 type reqeustErrorAndData struct {
 	err  error
@@ -72,7 +70,7 @@ type IceRequest struct {
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
 func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error) {
-	var timeout int = 5
+	//var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
 	curPool, err := this.getPool(this.name)
@@ -154,29 +152,17 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 			}
 		}
 	}
-
 	buf.Flush()
+
 	//var timeoutCh chan int
 
-	errAndData := make(chan *reqeustErrorAndData)
-	go request(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
-	go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, timeout, this.Params, errAndData)
-	ed := <-errAndData
-	return ed.data, ed.err
+	//errAndData := make(chan *reqeustErrorAndData)
+	//go doResult(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
+	return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
+	//go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, timeout, this.Params, errAndData)
+	//ed := <-errAndData
+	//return ed.data, ed.err
 
-}
-func (this *IceRequest) writeParams(buf *IceBuffer) {
-	if this.Params == nil {
-		return
-	}
-	tp := reflect.TypeOf(this.Params).String()
-	log.Info(tp, "==")
-	if strings.HasPrefix("*[] ", tp) || strings.HasPrefix("[] ", tp) {
-
-	}
-}
-
-func (this *IceRequest) writeOneParam(buf *IceBuffer) {
 }
 
 func NewIceRequest(name string, mode OperationMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
@@ -236,7 +222,8 @@ func (this *IceRequest) getPool(name string) (pool.Pool, error) {
 	//	return nil, err
 	//}
 }
-func request(address string, rw io.ReadWriter, responseType ResponseType, operator string, params interface{}, errAndData chan *reqeustErrorAndData) {
+
+func doResult(address string, rw io.ReadWriter, responseType ResponseType, operator string, params interface{}, errAndData chan *reqeustErrorAndData) {
 	var size, lastSize int
 	var head, data []byte
 	head = make([]byte, 25) //先读取头
@@ -269,7 +256,6 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
 	var replyStatus = head[18]
-	log.Info("第19位是什么", head[19])
 	switch replyStatus {
 	case ReplyUserException:
 		lastSize = utils.BytesToInt(head[20:24])
@@ -607,10 +593,255 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data: data,
 	}
 }
+func doResultDirect(address string, rw io.ReadWriter, responseType ResponseType, operator string, params interface{}) (interface{}, error) {
+	var size, lastSize int
+	var head []byte
+	head = make([]byte, 25) //先读取头
+	size, err := rw.Read(head)
+	if err != nil {
+		return nil, err
+	}
+	//pmj = head[4]
+	//pmn = head[5]
+	//emj = head[6]
+	//emn = head[7]
+	//rmsg = head[8]
+	//zip = head[9]
+	//fmt.Printf("协议版本major = %d,minor = %d\n", pmj, pmn)
+	//fmt.Printf("编码版本major = %d,minor = %d\n", emj, emn)
+	//fmt.Printf("msg = %d\n", rmsg)
+	//fmt.Printf("压缩标示 = %d\n", zip)
+	//fmt.Printf("数据长度 = %d\n", utils.BytesToInt(head[10:14]))
+	if utils.BytesToInt(head[10:14]) == size || responseType == ResponseType_Void { //void 的方法，没有返回,也就只会返回25个字节的数据
+		return nil, err
+	}
+	//requestId = utils.BytesToInt(head[14:18])
+	//fmt.Printf("请求ID = %d\n", requestId)
+	var replyStatus = head[18]
+	switch replyStatus {
+	case ReplyUserException:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		return nil, NewUserError(address, operator, string(data), params)
+	case ReplyObjectNotExist:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		return nil, NewObjectNotExistsError(address, operator, string(data), params)
+	case ReplyFacetNotExist:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		return nil, NewFacetNotExistsError(address, operator, string(data), params)
+	case ReplyOperationNotExist:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		return nil, NewOperatorNotExistsError(address, operator, string(data), params)
+	case ReplyUnknownLocalException:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		return nil, NewIceServerError(address, operator, string(data), params)
+	case ReplyUnknownUserException:
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		return nil, NewUserError(address, operator, string(data), params)
+	case ReplyUnknownException: //用户异常
+		lastSize = utils.BytesToInt(head[20:24])
+		data := make([]byte, lastSize) //读取用户异常信息
+		size, err = rw.Read(data)
+		if err != nil {
+			return nil, err
+		}
+		data = append([]byte{head[24]}, data...)
+		userUnknownError := NewUserUnknownError(address, operator, string(data), params)
+		return nil, userUnknownError
+	}
+	lastSize = utils.BytesToInt(head[19:23])
+	//log.Info("整形后面的数据长度（包括整形4字节） ", lastSize)
+	//_encodingMajor := head[23]
+	//_encodingMinor := head[24]
+	lastSize = lastSize - 4 - 1 - 1 //4:整形后面包括整形长度，1：主编码版本 ，1：副编码版本
+	//fmt.Printf("编码版本major = %d,minor = %d\n", _encodingMajor, _encodingMinor)
+	//log.Info("最终数据长度及数据 的长度", lastSize)
+	//TODO 这些还要处理数组问题
+	if responseType == ResponseType_String {
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		_, offset := readSize(data)
+		if showResult {
+			log.Info("string结果", string(data[offset:]))
+		}
+		return string(data[offset:]), err
+	} else if responseType == ResponseType_String_Array {
+		data := make([]byte, lastSize)
+
+		size, err = rw.Read(data)
+		var arr = readStringArray(data)
+		if showResult {
+			log.Info("字符串数组", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Bool { //通过
+		data := make([]byte, 1)
+		size, err = rw.Read(data)
+		var re = utils.BytesToBool(data)
+		if showResult {
+			log.Info("bool结果 ", re)
+		}
+		return utils.BytesToBool(data), err
+	} else if responseType == ResponseType_Bool_Array { //通过
+		log.Info(lastSize)
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		var arr = make([]bool, size)
+		for i := 0; i < lastSize-1; i++ {
+			arr[i] = utils.BytesToBool(data[i+offset : i+1+offset])
+		}
+		if showResult {
+			log.Info("boolArray结果", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Int8 { //测试通过
+		data := make([]byte, 1)
+		size, err = rw.Read(data)
+		return utils.BytesToInt8(data), err
+	} else if responseType == ResponseType_Int8_Array { //测试通过
+
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		var arr = make([]int8, size)
+		for i := 0; i < lastSize-1; i++ {
+			arr[i] = utils.BytesToInt8(data[i+offset : i+1+offset])
+		}
+		if showResult {
+			log.Info("int8Array结果", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Int16 { //通过
+		data := make([]byte, 2)
+		size, err = rw.Read(data)
+		return utils.BytesToInt16(data), err
+	} else if responseType == ResponseType_Int16_Array { //通过
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		var arr = make([]int16, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToInt16(data[i*2+offset : (i+1)*2+offset])
+		}
+		if showResult {
+			log.Info("int16Array结果", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Int { //通过
+		data := make([]byte, 4)
+		size, err = rw.Read(data)
+		return utils.BytesToInt(data), err
+	} else if responseType == ResponseType_Int_Array { //通过
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		var arr = make([]int, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToInt(data[i*4+offset : (i+1)*4+offset])
+		}
+		if showResult {
+			log.Info("intArray结果", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Int64 {
+		data := make([]byte, 8)
+		size, err = rw.Read(data)
+		return utils.BytesToInt64(data), err
+	} else if responseType == ResponseType_Int64_Array { //通过
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		var arr = make([]int, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToInt(data[i*8+offset : (i+1)*8+offset])
+		}
+		if showResult {
+			log.Info("int64Array结果", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Float32 {
+		data := make([]byte, 4)
+		size, err = rw.Read(data)
+		return utils.BytesToFloat32(data), err
+	} else if responseType == ResponseType_Float32_Array {
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		if showResult {
+			log.Info("读取float32Array", lastSize, size, offset)
+		}
+		var arr = make([]float32, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToFloat32(data[i*4+offset : (i+1)*4+offset])
+		}
+		if showResult {
+			log.Info("float32Array结果", arr)
+		}
+		return arr, err
+	} else if responseType == ResponseType_Float64 {
+		data := make([]byte, 8)
+		size, err = rw.Read(data)
+		if showResult {
+			log.Info("float64:", utils.BytesToFloat64(data))
+		}
+		return utils.BytesToFloat64(data), err
+	} else if responseType == ResponseType_Float64_Array {
+		data := make([]byte, lastSize)
+		size, err = rw.Read(data)
+		size, offset := readSize(data)
+		var arr = make([]float64, size)
+		for i := 0; i < size; i++ {
+			arr[i] = utils.BytesToFloat64(data[i*8+offset : (i+1)*8+offset])
+		}
+		if showResult {
+			log.Info("float64Array结果", arr)
+		}
+		return arr, err
+	}
+	return nil, nil
+}
 
 //请求超时monitor
 func requestTimeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
-	log.Info("启动超时监控启动")
+	if showResult {
+		log.Info("启动超时监控启动")
+	}
 	<-time.After(time.Duration(timeout) * time.Second)
 	errAndData <- &reqeustErrorAndData{
 		err:  NewTimeoutError(address, operator, timeout, params),

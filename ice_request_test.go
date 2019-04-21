@@ -6,7 +6,9 @@ import (
 	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/ice"
 	"github.com/siddontang/go/log"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func init() {
@@ -108,15 +110,21 @@ func TestGoicetwo(t *testing.T) {
 		log.Info("请求结果", result)
 	}
 }
-func TestGoiceChinese(t *testing.T) {
+func TestGoiceChineseq(t *testing.T) {
+	start := time.Now().UnixNano()
+	var times = 100000
 
 	//测试通过aa
-	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "我", "你")
-	result, err := request.DoRequest(ice.ResponseType_String)
-	reError(err)
-	if showResult {
-		log.Info("请求结果", result)
+	for i := 0; i < times; i++ {
+		request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "我"+strconv.Itoa(i), "你"+strconv.Itoa(i))
+		_, err := request.DoRequest(ice.ResponseType_String)
+		reError(err)
+		//if showResult {
+		//	log.Info("请求结果", result)
+		//}
 	}
+	log.Infof("执行[%d]\n", times)
+	log.Infof("flush=%d\n", time.Now().UnixNano()-start)
 }
 func TestGoiceGetBool(t *testing.T) {
 	//测试通过aa
@@ -453,7 +461,7 @@ func reError(err error) {
 	}
 }
 
-var showResult = true
+var showResult = false
 
 func TestGoiceExecute(t *testing.T) {
 
