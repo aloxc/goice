@@ -136,7 +136,7 @@ func NewNoMoreConnectionError(address, network string, timeout, maxConnectionCou
 	}
 }
 func (this *UserUnknownError) Error() string {
-	return fmt.Sprintf("\nICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
+	return fmt.Sprintf("\n未知ICE服务器端程序异常: \n\t地址: %s\n\t方法: %s\n\t参数: [%s]\n\t描述: \n\t%s\n\n", this.address, this.operator, this.params, this.desc)
 }
 
 func (this *TimeoutError) Error() string {

@@ -99,8 +99,19 @@ func BenchmarkGoicetwo(b *testing.B) {
 	}
 }
 func TestGoicetwo(t *testing.T) {
+
 	//测试通过aa
 	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "aaa", "bbb")
+	result, err := request.DoRequest(ice.ResponseType_String)
+	reError(err)
+	if showResult {
+		log.Info("请求结果", result)
+	}
+}
+func TestGoiceChinese(t *testing.T) {
+
+	//测试通过aa
+	request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "我", "你")
 	result, err := request.DoRequest(ice.ResponseType_String)
 	reError(err)
 	if showResult {

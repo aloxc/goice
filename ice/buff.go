@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/utils"
-	"github.com/siddontang/go-log/log"
-	"reflect"
 )
 
 type IceBuffer struct {
@@ -110,6 +108,7 @@ func (this *IceBuffer) WriteSize(v int) {
 func (this *IceBuffer) WriteStr(str string) {
 	len := len(str)
 	this.WriteSize(len)
+	//log.Infof("%s长度%d",str,len)
 	if len > 0 {
 		this.WriteString(str) //	写字符串
 	}
@@ -224,7 +223,6 @@ func (this *IceBuffer) Prepare(identity *Identity, facet, operator string, param
 	total += 4 //整形后的数据长度（int = 4 ）
 	total += 1 //encoding major
 	total += 1 //encoding manor
-	log.Info("参数类型", reflect.TypeOf(params))
 	if params != nil {
 		for _, param := range params.([]interface{}) {
 			switch param.(type) {

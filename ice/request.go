@@ -22,6 +22,8 @@ type Request struct {
 	Params map[string]string
 }
 
+var showResult = true
+
 type reqeustErrorAndData struct {
 	err  error
 	data interface{}
@@ -60,8 +62,8 @@ type IceRequest struct {
 	//. 每个Ice 对象都有一个唯一的对象标识（object identity）。对象标识是用于把一个对象与其他所有对象区别开来的标识值。Ice 对象模型假定对象标识是全局唯一的，也就是说，在一个Ice 通信域中，不会有两个对
 	//象具有相同的对象标识。
 	Facet           string            //版本控制用 1 字节 1 + 20 + xx = 21 + xx
-	Operator        string            //操作名称，也就是要调用的方法名称 yy 字节 21 + xx + yy
-	OperatorMode                      // 1 字节 1 + 21 + xx + yy = 22 + xx + yy
+	Operation       string            //操作名称，也就是要调用的方法名称 yy 字节 21 + xx + yy
+	OperationMode                     // 1 字节 1 + 21 + xx + yy = 22 + xx + yy
 	realSize        int               // 4 字节 4 + 22 + xx + yy = 26 + xx + yy
 	Context         map[string]string //调用上下文 zz 字节
 	encodingVersion *EncodingVersion  // 2 字节
@@ -90,28 +92,21 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 		this.Context = make(map[string]string)
 	}
 	this.Context[string(config.Context_ClientAddr)] = conn.LocalAddr().String() //往后端传客户端地址
-	log.Info("参数长度", len(this.Params.([]interface{})))
-	//if this.Params != nil {
-	//	if len(this.Params.([]interface{})) == 1 {
-	//		this.Params = this.Params.([]interface{})[0]
-	//	} else if len(this.Params.([]interface{})) == 0 {
-	//		this.Params = nil
-	//	}
-	//}
+	//log.Info("参数个数", len(this.Params.([]interface{})))
 
-	total, real := buf.Prepare(this.Identity, this.Facet, this.Operator, this.Params, this.Context)
+	total, real := buf.Prepare(this.Identity, this.Facet, this.Operation, this.Params, this.Context)
 	buf.Write(*this.head)
 	buf.WriteTotalSize(total)
 	buf.WriteRequestId(this.requestId)
 	buf.WriteIdentity(this.Identity)
 	buf.WriteFacet(this.Facet)
-	buf.WriteOperator(this.Operator)
-	buf.WriteByte(byte(this.OperatorMode))
+	buf.WriteOperator(this.Operation)
+	buf.WriteByte(byte(this.OperationMode))
 	buf.WriteContext(this.Context)
 	buf.WriteRealSize(real)
 	buf.WriteEncodingVersion(this.encodingVersion)
 	//this.writeParams(buf)
-	log.Info("参数类型", reflect.TypeOf(this.Params))
+	//log.Info("参数类型", reflect.TypeOf(this.Params))
 	//os.Exit(1)
 	if this.Params != nil {
 		for _, param := range this.Params.([]interface{}) {
@@ -164,8 +159,8 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	//var timeoutCh chan int
 
 	errAndData := make(chan *reqeustErrorAndData)
-	go request(conn.RemoteAddr().String(), rw, responseType, this.Operator, this.Params, errAndData)
-	go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operator, timeout, this.Params, errAndData)
+	go request(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
+	go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, timeout, this.Params, errAndData)
 	ed := <-errAndData
 	return ed.data, ed.err
 
@@ -184,12 +179,12 @@ func (this *IceRequest) writeParams(buf *IceBuffer) {
 func (this *IceRequest) writeOneParam(buf *IceBuffer) {
 }
 
-func NewIceRequest(name string, mode OperatorMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
+func NewIceRequest(name string, mode OperationMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
 	return &IceRequest{
 		name:            name,
 		head:            GetHead(),
-		Operator:        operator,
-		OperatorMode:    mode,
+		Operation:       operator,
+		OperationMode:   mode,
 		encodingVersion: GetDefaultEncodingVersion(),
 		Params:          params,
 		Identity:        GetIdentity(config.ConfigMap[name][config.IdentityName].(string), ""),
@@ -274,6 +269,7 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 	//requestId = utils.BytesToInt(head[14:18])
 	//fmt.Printf("请求ID = %d\n", requestId)
 	var replyStatus = head[18]
+	log.Info("第19位是什么", head[19])
 	switch replyStatus {
 	case ReplyUserException:
 		lastSize = utils.BytesToInt(head[20:24])
@@ -405,22 +401,22 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		_, offset := readSize(data)
-		log.Info("string结果", string(data[offset:]))
+		if showResult {
+			log.Info("string结果", string(data[offset:]))
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: data[offset:],
+			data: string(data[offset:]),
 		}
 		return
 	} else if responseType == ResponseType_String_Array {
-		log.Info("剩余", lastSize)
 		data := make([]byte, lastSize)
 
 		size, err = rw.Read(data)
 		var arr = readStringArray(data)
-		log.Info("字符串数组", arr)
-		//for i,v:=range arr {
-		//	log.Infof("[%d] = %d，[%s]",i, len(v),v)
-		//}
+		if showResult {
+			log.Info("字符串数组", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
@@ -429,10 +425,12 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, 1)
 		size, err = rw.Read(data)
 		var re = utils.BytesToBool(data)
-		log.Info("bool结果 ", re)
+		if showResult {
+			log.Info("bool结果 ", re)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
-			data: re,
+			data: utils.BytesToBool(data),
 		}
 		return
 	} else if responseType == ResponseType_Bool_Array { //通过
@@ -444,7 +442,9 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		for i := 0; i < lastSize-1; i++ {
 			arr[i] = utils.BytesToBool(data[i+offset : i+1+offset])
 		}
-		log.Info("boolArray结果", arr)
+		if showResult {
+			log.Info("boolArray结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
@@ -463,13 +463,13 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
-		log.Info("读取int8Array", lastSize, size, offset)
 		var arr = make([]int8, size)
 		for i := 0; i < lastSize-1; i++ {
-			log.Info("i =", i)
 			arr[i] = utils.BytesToInt8(data[i+offset : i+1+offset])
 		}
-		log.Info("int8Array结果", arr)
+		if showResult {
+			log.Info("int8Array结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
@@ -478,7 +478,6 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 	} else if responseType == ResponseType_Int16 { //通过
 		data := make([]byte, 2)
 		size, err = rw.Read(data)
-		log.Info("int16=", utils.BytesToInt16(data))
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: utils.BytesToInt16(data),
@@ -488,13 +487,13 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
-		log.Info("读取int16Array", lastSize, size, offset)
 		var arr = make([]int16, size)
 		for i := 0; i < size; i++ {
-			log.Info("i =", i)
 			arr[i] = utils.BytesToInt16(data[i*2+offset : (i+1)*2+offset])
 		}
-		log.Info("int16Array结果", arr)
+		if showResult {
+			log.Info("int16Array结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
@@ -512,12 +511,13 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
-		log.Info("读取intArray", lastSize, size, offset)
 		var arr = make([]int, size)
 		for i := 0; i < size; i++ {
 			arr[i] = utils.BytesToInt(data[i*4+offset : (i+1)*4+offset])
 		}
-		log.Info("intArray结果", arr)
+		if showResult {
+			log.Info("intArray结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
@@ -535,12 +535,13 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
-		log.Info("读取int64Array", lastSize, size, offset)
 		var arr = make([]int, size)
 		for i := 0; i < size; i++ {
 			arr[i] = utils.BytesToInt(data[i*8+offset : (i+1)*8+offset])
 		}
-		log.Info("int64Array结果", arr)
+		if showResult {
+			log.Info("int64Array结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
@@ -558,22 +559,27 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
-		log.Info("读取float32Array", lastSize, size, offset)
+		if showResult {
+			log.Info("读取float32Array", lastSize, size, offset)
+		}
 		var arr = make([]float32, size)
 		for i := 0; i < size; i++ {
 			arr[i] = utils.BytesToFloat32(data[i*4+offset : (i+1)*4+offset])
 		}
-		log.Info("float32Array结果", arr)
+		if showResult {
+			log.Info("float32Array结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
 		}
 		return
 	} else if responseType == ResponseType_Float64 {
-		log.Info("lastSize = ", lastSize)
 		data := make([]byte, 8)
 		size, err = rw.Read(data)
-		log.Info("float64:", utils.BytesToFloat64(data))
+		if showResult {
+			log.Info("float64:", utils.BytesToFloat64(data))
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: utils.BytesToFloat64(data),
@@ -583,63 +589,19 @@ func request(address string, rw io.ReadWriter, responseType ResponseType, operat
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
-		log.Info("读取float64Array", lastSize, size, offset)
 		var arr = make([]float64, size)
 		for i := 0; i < size; i++ {
 			arr[i] = utils.BytesToFloat64(data[i*8+offset : (i+1)*8+offset])
 		}
-		log.Info("float64Array结果", arr)
+		if showResult {
+			log.Info("float64Array结果", arr)
+		}
 		errAndData <- &reqeustErrorAndData{
 			err:  err,
 			data: arr,
 		}
 		return
 	}
-	//sizeDefine := 0
-	////realSize := 0
-	////字符串的
-	//if lastSize <= 255 {
-	//	//读取一个字节
-	//	sizeDefine = 1
-	//	dataSizeData := make([]byte, sizeDefine)
-	//	size, err = rw.Read(dataSizeData)
-	//	if err != nil {
-	//		errAndData <- &reqeustErrorAndData{
-	//			err:  err,
-	//			data: nil,
-	//		}
-	//		return
-	//	}
-	//	//realSize = int(dataSizeData[0])
-	//} else {
-	//	//读取一个字节-1，跟着4个字节的数据长度（int）
-	//	sizeDefine = 5
-	//	dataSizeData := make([]byte, sizeDefine)
-	//	size, err = rw.Read(dataSizeData)
-	//	if err != nil {
-	//		errAndData <- &reqeustErrorAndData{
-	//			err:  err,
-	//			data: nil,
-	//		}
-	//		return
-	//	}
-	//	//realSize = utils.BytesToInt(dataSizeData[1:])
-	//	//log.Info("长度超过254，读取下这个 -1 是什么%d", dataSizeData[0])
-	//}
-	////log.Info("lastSize=",lastSize)
-	//lastSize = lastSize - sizeDefine
-	////log.Info("sizeDefine=" ,sizeDefine)
-	////log.Info("计算数据长度是 ", lastSize)
-	////log.Info("真实数据长度是 ", realSize)
-	//data = make([]byte, lastSize) //先读取头
-	//size, err = rw.Read(data)
-	//if err != nil {
-	//	errAndData <- &reqeustErrorAndData{
-	//		err:  err,
-	//		data: nil,
-	//	}
-	//	return
-	//}
 	errAndData <- &reqeustErrorAndData{
 		err:  err,
 		data: data,
@@ -703,36 +665,3 @@ func readStringArray(data []byte) (arr []string) {
 	}
 	return
 }
-
-//写完上面的head 10字节
-// 写 总长度
-// 写请求id
-// 接下来写 identity.name的长度（见BaseStream的WriteSize方法），接下来写identity.name
-// 接下来写 identity.category的长度（见BaseStream的WriteSize方法），接下来写identity.category（如果为空或者长度为零就不写）
-// Identity的name和category，本里中name=HelloIce,category为空，
-//写完这些数据后buf就有18+1+8+1+0=28字节
-//接下来下facet的，如果facet为空或者长度为0 就写一个为0（byte）的数据到buf后面；
-//如果不为空就封装成facet数组（数组长度为1），然后写数组长度到buf后面，然后循环写每个facet长度和当前facet
-//接下来写调用方法的长度和方法名称，本示例中调用sayHello方法，
-//接下来写一字节的OperationMode，
-//接下来写context的数据（就是指ice.ctx这个context），
-//如果context不为空就写context的size，然后遍历context中key和value，key、value都是字符串，也就是先写key的长度再写key
-//再写value的长度再写value，如此遍历直到遍历完整
-//context为空就读取内置的context（implicitContext，就是我们配置文件内些配置，比如说超时，比如说最大消息长度），
-// 见java代码OutgoingAsync中
-// Ice.ImplicitContextI implicitContext = ref.getInstance().getImplicitContext();
-//            java.util.Map<String, String> prxContext = ref.getContext()
-//如果 implicitContext为空就写 prxContent,否则就写implicitContext和prxContext合并的，但是实际上目前也是空的，。
-//接下来直接写个int 0；
-//
-
-//连接后发送 18个头，接下来 identity 18 + 1 + 8 + 1
-// + facet 1 = 29
-// + operator(ice_isA) + 1 + 7 = 37
-// + mode + 1 = 38
-// + context = 39
-// + int0 + 4 = 43
-// + encodingVersion + 1 +1 = 45
-// + ::service::HelloService = 45 + 1 + 23 = 69
-//为什么头会改变了呢
-//使用小端

@@ -1,9 +1,9 @@
 package ice
 
-type OperatorMode byte
+type OperationMode byte
 
 const (
-	OperatorModeNormal      OperatorMode = 0
-	OperatorModeNonmutating OperatorMode = 1
-	OperatorModeIdempotent  OperatorMode = 2 //幂等信接口标示
+	OperatorModeNormal      OperationMode = 0 //请求发送的标志
+	OperatorModeNonmutating OperationMode = 1 //连接后发送的标注
+	OperatorModeIdempotent  OperationMode = 2 //幂等信接口标示
 )

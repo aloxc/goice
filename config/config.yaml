@@ -23,7 +23,7 @@ servers:
   - UserPostIce:
       MessageMaxSize: 200
       ConnectTimeout: 2
-      Address: localhost:1889
+      Address: localhost:1888
       Module: user::post
       Name: Userpost
       IdentityName: UserPost

@@ -17,7 +17,7 @@ func main3() {
 	//Goice.sayHi()无參及
 	context := make(map[string]string)
 	context["name"] = "aloxc"
-	//func NewIceRequest(name string, mode OperatorMode, operator string, context map[string]string, params interface{}) *IceRequest {
+	//func NewIceRequest(name string, mode OperationMode, operator string, context map[string]string, params interface{}) *IceRequest {
 
 	request := ice.NewIceRequest("HelloIce", ice.OperatorModeNormal, "sayHi", nil, "")
 	result, err := request.DoRequest(ice.ResponseType_String)
