@@ -143,23 +143,7 @@ type Pinger interface {
 // Exec may return ErrSkip.
 //
 // Deprecated: Drivers should implement ExecerContext instead.
-type Execer interface {
-	Exec(query string, args []Value) (Result, error)
-}
 
-// ExecerContext is an optional interface that may be implemented by a Conn.
-//
-// If a Conn does not implement ExecerContext, the sql package's DB.Exec
-// will fall back to Execer; if the Conn does not implement Execer either,
-// DB.Exec will first prepare a query, execute the statement, and then
-// close the statement.
-//
-// ExecerContext may return ErrSkip.
-//
-// ExecerContext must honor the context timeout and return when the context is canceled.
-type ExecerContext interface {
-	ExecContext(ctx context.Context, query string, args []NamedValue) (Result, error)
-}
 
 // Queryer is an optional interface that may be implemented by a Conn.
 //
@@ -271,22 +255,11 @@ type Stmt interface {
 	// as an INSERT or UPDATE.
 	//
 	// Deprecated: Drivers should implement StmtExecContext instead (or additionally).
-	Exec(args []Value) (Result, error)
-
 	// Query executes a query that may return rows, such as a
 	// SELECT.
 	//
 	// Deprecated: Drivers should implement StmtQueryContext instead (or additionally).
 	Query(args []Value) (Rows, error)
-}
-
-// StmtExecContext enhances the Stmt interface by providing Exec with context.
-type StmtExecContext interface {
-	// ExecContext executes a query that doesn't return rows, such
-	// as an INSERT or UPDATE.
-	//
-	// ExecContext must honor the context timeout and return when it is canceled.
-	ExecContext(ctx context.Context, args []NamedValue) (Result, error)
 }
 
 // StmtQueryContext enhances the Stmt interface by providing Query with context.

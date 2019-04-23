@@ -44,49 +44,6 @@ func (stmt *mysqlStmt) ColumnConverter(idx int) driver.ValueConverter {
 	return converter{}
 }
 
-func (stmt *mysqlStmt) Exec(args []driver.Value) (driver.Result, error) {
-	if stmt.mc.closed.IsSet() {
-		errLog.Print(ErrInvalidConn)
-		return nil, driver.ErrBadConn
-	}
-	// Send command
-	err := stmt.writeExecutePacket(args)
-	if err != nil {
-		return nil, stmt.mc.markBadConn(err)
-	}
-
-	mc := stmt.mc
-
-	mc.affectedRows = 0
-	mc.insertId = 0
-
-	// Read Result
-	resLen, err := mc.readResultSetHeaderPacket()
-	if err != nil {
-		return nil, err
-	}
-
-	if resLen > 0 {
-		// Columns
-		if err = mc.readUntilEOF(); err != nil {
-			return nil, err
-		}
-
-		// Rows
-		if err := mc.readUntilEOF(); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := mc.discardResults(); err != nil {
-		return nil, err
-	}
-
-	return &mysqlResult{
-		affectedRows: int64(mc.affectedRows),
-		insertId:     int64(mc.insertId),
-	}, nil
-}
 
 func (stmt *mysqlStmt) Query(args []driver.Value) (driver.Rows, error) {
 	return stmt.query(args)

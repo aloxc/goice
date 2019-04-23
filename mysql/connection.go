@@ -41,34 +41,6 @@ type mysqlConn struct {
 }
 
 // Handles parameters set in DSN after the connection is established
-func (mc *mysqlConn) handleParams() (err error) {
-	for param, val := range mc.cfg.Params {
-		switch param {
-		// Charset
-		case "charset":
-			charsets := strings.Split(val, ",")
-			for i := range charsets {
-				// ignore errors here - a charset may not exist
-				err = mc.exec("SET NAMES " + charsets[i])
-				if err == nil {
-					break
-				}
-			}
-			if err != nil {
-				return
-			}
-
-		// System Vars
-		default:
-			err = mc.exec("SET " + param + "=" + val + "")
-			if err != nil {
-				return
-			}
-		}
-	}
-
-	return
-}
 
 func (mc *mysqlConn) markBadConn(err error) error {
 	if mc == nil {
@@ -274,62 +246,7 @@ func (mc *mysqlConn) interpolateParams(query string, args []driver.Value) (strin
 	return string(buf), nil
 }
 
-func (mc *mysqlConn) Exec(query string, args []driver.Value) (driver.Result, error) {
-	if mc.closed.IsSet() {
-		errLog.Print(ErrInvalidConn)
-		return nil, driver.ErrBadConn
-	}
-	if len(args) != 0 {
-		if !mc.cfg.InterpolateParams {
-			return nil, driver.ErrSkip
-		}
-		// try to interpolate the parameters to save extra roundtrips for preparing and closing a statement
-		prepared, err := mc.interpolateParams(query, args)
-		if err != nil {
-			return nil, err
-		}
-		query = prepared
-	}
-	mc.affectedRows = 0
-	mc.insertId = 0
-
-	err := mc.exec(query)
-	if err == nil {
-		return &mysqlResult{
-			affectedRows: int64(mc.affectedRows),
-			insertId:     int64(mc.insertId),
-		}, err
-	}
-	return nil, mc.markBadConn(err)
-}
-
 // Internal function to execute commands
-func (mc *mysqlConn) exec(query string) error {
-	// Send command
-	if err := mc.writeCommandPacketStr(comQuery, query); err != nil {
-		return mc.markBadConn(err)
-	}
-
-	// Read Result
-	resLen, err := mc.readResultSetHeaderPacket()
-	if err != nil {
-		return err
-	}
-
-	if resLen > 0 {
-		// columns
-		if err := mc.readUntilEOF(); err != nil {
-			return err
-		}
-
-		// rows
-		if err := mc.readUntilEOF(); err != nil {
-			return err
-		}
-	}
-
-	return mc.discardResults()
-}
 
 func (mc *mysqlConn) Query(query string, args []driver.Value) (driver.Rows, error) {
 	return mc.query(query, args)
@@ -466,19 +383,6 @@ func (mc *mysqlConn) QueryContext(ctx context.Context, query string, args []driv
 	return rows, err
 }
 
-func (mc *mysqlConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	dargs, err := namedValueToValue(args)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := mc.watchCancel(ctx); err != nil {
-		return nil, err
-	}
-	defer mc.finish()
-
-	return mc.Exec(query, dargs)
-}
 
 func (mc *mysqlConn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
 	if err := mc.watchCancel(ctx); err != nil {
@@ -519,19 +423,6 @@ func (stmt *mysqlStmt) QueryContext(ctx context.Context, args []driver.NamedValu
 	return rows, err
 }
 
-func (stmt *mysqlStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-	dargs, err := namedValueToValue(args)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := stmt.mc.watchCancel(ctx); err != nil {
-		return nil, err
-	}
-	defer stmt.mc.finish()
-
-	return stmt.Exec(dargs)
-}
 
 func (mc *mysqlConn) watchCancel(ctx context.Context) error {
 	if mc.watching {
