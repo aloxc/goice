@@ -13,7 +13,6 @@ import (
 type Connection struct {
 	*net.TCPConn
 }
-
 type connAndError struct {
 	*Connection
 	error

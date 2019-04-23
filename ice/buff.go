@@ -8,8 +8,6 @@ import (
 
 type IceBuffer struct {
 	*bufio.ReadWriter
-	Out *Outgoing
-	In  *Incoming
 }
 
 func NewIceBuff(rw *bufio.ReadWriter) *IceBuffer {

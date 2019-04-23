@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var conn net.Conn
+
 type Request struct {
 	Method string
 	Params map[string]string
@@ -73,17 +75,21 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	//var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
-	curPool, err := this.getPool(this.name)
-	if err != nil { //如果连接失败。则返回。
-		log.Error(err)
-		return nil, err
-	}
-	conn, err := curPool.Get()
-	if err != nil { //如果连接失败。则返回。
-		log.Error(err)
-		return nil, err
-	}
-	defer curPool.Return(conn)
+	//curPool, err := this.getPool(this.name)
+	//if err != nil { //如果连接失败。则返回。
+	//	log.Error(err)
+	//	return nil, err
+	//}
+	//conn, err := curPool.Get()
+	//conn.SetDeadline(time.Now().Add((time.Second * 20)))
+	//if err != nil { //如果连接失败。则返回。
+	//	log.Error(err)
+	//	return nil, err
+	//}
+	//atomic.AddInt32(&count,1)
+	//defer
+
+	//直接使用连接的代码
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var buf = NewIceBuff(rw)
 	if this.Context == nil {
@@ -96,6 +102,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	buf.Write(*this.head)
 	buf.WriteTotalSize(total)
 	buf.WriteRequestId(this.requestId)
+	//buf.Flush()
 	buf.WriteIdentity(this.Identity)
 	buf.WriteFacet(this.Facet)
 	buf.WriteOperator(this.Operation)
@@ -164,7 +171,9 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	//return ed.data, ed.err
 
 }
-
+func SetConn(conn1 net.Conn) {
+	conn = conn1
+}
 func NewIceRequest(name string, mode OperationMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
 	return &IceRequest{
 		name:            name,
@@ -178,6 +187,8 @@ func NewIceRequest(name string, mode OperationMode, operator string, context map
 	}
 }
 
+var count int32 = 0
+
 //初始化连接池
 func (this *IceRequest) getPool(name string) (pool.Pool, error) {
 	var curPool pool.Pool
@@ -189,6 +200,7 @@ func (this *IceRequest) getPool(name string) (pool.Pool, error) {
 			curPool, err := pool.NewGPool(
 				&pool.PoolConfig{
 					Factory: func() (net.Conn, error) {
+						log.Info("重新创建连接")
 						conn, err := net.DialTimeout("tcp4", config.ConfigMap[name][config.Address].(string),
 							time.Duration(config.ConfigMap[name][config.ConnectTimeout].(int))*time.Second)
 
@@ -215,12 +227,6 @@ func (this *IceRequest) getPool(name string) (pool.Pool, error) {
 	curPool = connMap[name]
 	return curPool, nil
 
-	//直接使用连接的代码
-	//var conn, err = Connect("tcp4", address, timeout)
-	//if err != nil { //如果连接失败。则返回。
-	//	log.Error(err)
-	//	return nil, err
-	//}
 }
 
 func doResult(address string, rw io.ReadWriter, responseType ResponseType, operator string, params interface{}, errAndData chan *reqeustErrorAndData) {
