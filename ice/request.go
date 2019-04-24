@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"github.com/aloxc/goice/config"
-	"github.com/aloxc/goice/pool"
 	"github.com/aloxc/goice/utils"
-	"github.com/pkg/errors"
 	"github.com/siddontang/go/log"
 	"io"
 	"net"
@@ -14,9 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-var conn net.Conn
-
 type Request struct {
 	Method string
 	Params map[string]string
@@ -47,9 +42,9 @@ func (this *Request) String() string {
 }
 
 var (
-	requestId int32 = 2
-	connMap         = map[string]pool.Pool{}
-	mux       sync.Mutex
+	requestId   int32 = 2
+	connPoolMap       = map[string]Pool{}
+	mux         sync.Mutex
 )
 
 type IceRequest struct {
@@ -68,6 +63,7 @@ type IceRequest struct {
 	Context         map[string]string //调用上下文 zz 字节
 	encodingVersion *EncodingVersion  // 2 字节
 	Params          interface{}
+	OperateTimeout int
 }
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
@@ -75,20 +71,19 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	//var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
-	//curPool, err := this.getPool(this.name)
-	//if err != nil { //如果连接失败。则返回。
-	//	log.Error(err)
-	//	return nil, err
-	//}
-	//conn, err := curPool.Get()
-	//conn.SetDeadline(time.Now().Add((time.Second * 20)))
-	//if err != nil { //如果连接失败。则返回。
-	//	log.Error(err)
-	//	return nil, err
-	//}
-	//atomic.AddInt32(&count,1)
-	//defer
-
+	curPool, err := this.getPool(this.name)
+	if err != nil { //如果连接失败。则返回。
+		log.Error(err)
+		return nil, err
+	}
+	//log.Info("剩余", len(curPool.freeConns),curPool,curPool.freeConns)
+	conn, err := curPool.Get()
+	defer func() {
+		curPool.Return(conn)
+		//log.Info("归还中", len(curPool.freeConns))
+		connPoolMap[this.name] = curPool
+		//tPool = curPool
+	}()
 	//直接使用连接的代码
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var buf = NewIceBuff(rw)
@@ -102,7 +97,6 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	buf.Write(*this.head)
 	buf.WriteTotalSize(total)
 	buf.WriteRequestId(this.requestId)
-	//buf.Flush()
 	buf.WriteIdentity(this.Identity)
 	buf.WriteFacet(this.Facet)
 	buf.WriteOperator(this.Operation)
@@ -161,18 +155,13 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	}
 	buf.Flush()
 
-	//var timeoutCh chan int
+	errAndData := make(chan *reqeustErrorAndData)
+	go doResult(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
+	//return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
+	go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, this.OperateTimeout, this.Params, errAndData)
+	ed := <-errAndData
+	return ed.data, ed.err
 
-	//errAndData := make(chan *reqeustErrorAndData)
-	//go doResult(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
-	return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
-	//go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, timeout, this.Params, errAndData)
-	//ed := <-errAndData
-	//return ed.data, ed.err
-
-}
-func SetConn(conn1 net.Conn) {
-	conn = conn1
 }
 func NewIceRequest(name string, mode OperationMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
 	return &IceRequest{
@@ -184,49 +173,34 @@ func NewIceRequest(name string, mode OperationMode, operator string, context map
 		Params:          params,
 		Identity:        GetIdentity(config.ConfigMap[name][config.IdentityName].(string), ""),
 		Context:         context,
+		OperateTimeout:config.ConfigMap[name][config.OperateTimeout].(int),
 	}
 }
 
 var count int32 = 0
-
 //初始化连接池
-func (this *IceRequest) getPool(name string) (pool.Pool, error) {
-	var curPool pool.Pool
+func (this *IceRequest) getPool(name string) (Pool, error) {
+	var curPool Pool
 	var ok bool
-	if curPool, ok = connMap[name]; !ok {
-		//mux.Lock()
-		if curPool, ok = connMap[name]; !ok { //双检查锁
-			var curConn *net.Conn
-			curPool, err := pool.NewGPool(
-				&pool.PoolConfig{
-					Factory: func() (net.Conn, error) {
-						log.Info("重新创建连接")
-						conn, err := net.DialTimeout("tcp4", config.ConfigMap[name][config.Address].(string),
-							time.Duration(config.ConfigMap[name][config.ConnectTimeout].(int))*time.Second)
-
-						if err == nil {
-							curConn = &conn
-							InitConnection(this.Identity, this.name, curConn) //连接后一定要向服务器发送一条head请求
-						}
-						//mux.Unlock()
-
-						return conn, err
-					},
-					MaxCap:  config.ConfigMap[name]["MaxClientSize"].(int),
-					InitCap: 1,
-				})
-			if err != nil {
-				//mux.Unlock()
-				return nil, errors.New("连接池异常")
+	curPool, ok = connPoolMap[name]
+	//log.Info(ok)
+	if !ok {
+		if curPool, ok = connPoolMap[name]; !ok { //双检查锁
+			curPool := Pool{
+				Network: "tcp4",
+				Address: config.ConfigMap[name][config.Address].(string),
+				NewConnHook: &IceNewConnHook{
+					Identity: GetIdentity(config.ConfigMap[name][config.Name].(string), ""),
+					Name:     config.ConfigMap[name][config.Name].(string),
+				},
+				MaxConn:     config.ConfigMap[name]["MaxClientSize"].(int),
+				MaxLifetime: time.Duration(config.ConfigMap[name][config.MaxIdleTime].(int))*time.Second ,
 			}
-			curPool.Return(*curConn) //这个连接发起过head请求，也要先还回去。
-			connMap[name] = curPool
+			connPoolMap[name] = curPool
 		}
-		//mux.Unlock()
 	}
-	curPool = connMap[name]
+	curPool = connPoolMap[name]
 	return curPool, nil
-
 }
 
 func doResult(address string, rw io.ReadWriter, responseType ResponseType, operator string, params interface{}, errAndData chan *reqeustErrorAndData) {
@@ -855,20 +829,6 @@ func requestTimeoutMonitor(address, operator string, timeout int, params interfa
 	}
 	log.Info("超时完成")
 }
-func readString(data []byte, offset, size int) (str string) {
-	str = string(data[offset : offset+size])
-	return
-}
-
-func readIntArray(data []byte) (arr []int32) {
-	size, offset := readSize(data)
-	arr = make([]int32, size)
-	for i := 0; i < size; i++ {
-		arr[i] = utils.BytesToInt32(data[i*4+offset : (i+1)*4+offset])
-	}
-	return
-}
-
 //读取数据长度或者数组长度
 func readSize(data []byte) (size, offset int) {
 	offset = 0
@@ -901,4 +861,52 @@ func readStringArray(data []byte) (arr []string) {
 		offset += step + size
 	}
 	return
+}
+type IceNewConnHook struct {
+	Identity *Identity
+	Name string
+}
+func (this*IceNewConnHook)hook(conn *net.Conn) error{
+	log.Info("开始执行hook = ", atomic.AddInt32(&count, 1))
+	var facet string
+	rw := bufio.NewReadWriter(bufio.NewReader(*conn), bufio.NewWriter(*conn))
+	var buf = NewIceBuff(rw)
+
+	total, real := PrepareHead(this.Identity, "", config.ConfigMap[this.Name][config.Module].(string), nil)
+
+	var context map[string]string
+	var head, data []byte
+	var err error
+	buf.Write(*GetConnHead())                     // 10字节
+	buf.Write(utils.IntToBytes(total))                //size 10 +4 = 14
+	buf.Write(utils.IntToBytes(1))                    //requestId 14+4=18
+	buf.WriteStr(this.Identity.GetIdentityName())     //18+1+8=27
+	buf.WriteStr(this.Identity.GetIdentityCategory()) //27+1=28
+
+	if len(facet) == 0 {
+		buf.WriteByte(0) //28+1=29
+	} else {
+		facets := []string{facet}
+		buf.WriteStringArray(facets)
+	}
+	buf.WriteStr(string(config.Ice_isA))             //29+1+7=37
+	buf.WriteByte(byte(OperatorModeNonmutating)) //37+1=38
+	context = make(map[string]string)
+	buf.WriteStringMap(context) //38+1=39
+	//数据整形 java 中 BasicStream.endWriteEncaps方法，大约344行，写此后（39位后的）的数据长度，总数据长度减去39
+	buf.Write(utils.IntToBytes(real)) //修正数据长度，是总长度减去写完context后的长度 39 +4 = 43
+
+	buf.WriteByte(1) //encoding major 43+1=44
+	buf.WriteByte(1) //encoding minor 44+1=45
+
+	buf.WriteStr("::" + config.ConfigMap[this.Name][config.Module].(string) + "::" + config.ConfigMap[this.Name][config.Name].(string)) //45+1+23=69
+	buf.Flush()
+	head = make([]byte, 14) //先读取头
+	_, err = rw.Read(head)
+	if err != nil {
+		return err
+	}
+	data = make([]byte, 26) //连接的时候
+	_, err = rw.Read(data)
+	return err
 }

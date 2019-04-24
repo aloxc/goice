@@ -14,8 +14,29 @@ var ConnIce net.Conn
 func main() {
 	cli := command.Command{}
 	cli.Run()
-	TestGoiceChinese()
+	TestGoiceChinese2()
 }
+func TestGoiceChinese2() {
+	start := time.Now().UnixNano()
+	var times = 100000
+	//测试通过aa
+	for i := 0; i < times; i++ {
+		request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "我", "你")
+		data, err := request.DoRequest(ice.ResponseType_String)
+		if err != nil {
+			log.Info(err)
+		}
+		if i%2000 == 0 {
+			log.Info(i, (time.Now().UnixNano()-start)/1000000, "  ", data)
+		}
+		//if showResult {
+		//	log.Info("请求结果", result)
+		//}
+	}
+	log.Infof("执行[%d]\n", times)
+	log.Infof("flush=%d\n", (time.Now().UnixNano()-start)/1000000000)
+}
+
 func TestGoiceChinese() {
 	start := time.Now().UnixNano()
 	var times = 1000000
@@ -25,7 +46,6 @@ func TestGoiceChinese() {
 		log.Error(err)
 		return
 	}
-	ice.SetConn(ConnIce)
 	defer func() {
 		time.Sleep(time.Second * 10)
 		//if count % 1000 ==0{

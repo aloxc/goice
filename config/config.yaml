@@ -1,6 +1,7 @@
 default:
   OperateTimeout: 2
-  ConnectTimeout: 2
+  ConnectTimeout: 200
+  MaxIdleTime: 300
   MessageMaxSize: 65535
   DefaultClientSize: 20
   WarnClientSize: 30
@@ -13,10 +14,10 @@ default:
 
 servers:
   - Goice:
-      MaxClientSize: 100
+      MaxClientSize: 500
       WarnClientSize: 30
       Address: 127.0.0.1:1888
-      DefaultClientSize : 50
+      DefaultClientSize : 500
       Module: goiceinter
       Name: Goice
       IdentityName: Goice

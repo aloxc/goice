@@ -37,6 +37,7 @@ const (
 	Report             ConfigNodeName = "Report"
 	Module             ConfigNodeName = "Module"
 	Name               ConfigNodeName = "Name"
+	MaxIdleTime               ConfigNodeName = "MaxIdleTime"
 	IdentityName       ConfigNodeName = "IdentityName"
 	Context_ClientAddr ContextName    = "clientAddr"
 	Ice_isA            ICE_ISA        = "ice_isA"
@@ -74,8 +75,9 @@ func ReadConfig(configFile string) {
 	balance, err := cfg.Int("default." + string(Balance))
 	monitorPort, err := cfg.Int("default." + string(MonitorPort))
 	heartbeat, err := cfg.Int("default." + string(Heartbeat))
+	maxIdleTime, err := cfg.Int("default." + string(MaxIdleTime))
 	retryCount, err := cfg.Int("default." + string(RetryCount))
-	ReportType, err := cfg.Int("default." + string(Report))
+	report, err := cfg.Int("default." + string(Report))
 	compress, err := cfg.Bool("default." + string(Compress))
 
 	HttpPort = monitorPort
@@ -90,6 +92,8 @@ func ReadConfig(configFile string) {
 	defaultConfig[Balance] = balance
 	defaultConfig[Heartbeat] = heartbeat
 	defaultConfig[RetryCount] = retryCount
+	defaultConfig[MaxIdleTime] = maxIdleTime
+	defaultConfig[Report] = report
 
 	flag.IntVar(&operateTimeout, string(OperateTimeout), 0, "")
 	flag.IntVar(&connectTimeout, string(ConnectTimeout), 0, "")
@@ -101,7 +105,8 @@ func ReadConfig(configFile string) {
 	flag.IntVar(&retryCount, string(RetryCount), 0, "")
 	flag.IntVar(&monitorPort, string(MonitorPort), 0, "")
 	flag.IntVar(&balance, string(Balance), 0, "")
-	flag.IntVar(&ReportType, string(Report), 0, "")
+	flag.IntVar(&report, string(Report), 0, "")
+	flag.IntVar(&maxIdleTime, string(MaxIdleTime), 0, "")
 	var cstr string
 	flag.StringVar(&cstr, string(Compress), "", "")
 	flag.Parse()
@@ -115,6 +120,9 @@ func ReadConfig(configFile string) {
 	cmdConfig[RetryCount] = retryCount
 	cmdConfig[Heartbeat] = heartbeat
 	cmdConfig[Balance] = balance
+	cmdConfig[Report] = report
+	cmdConfig[MaxIdleTime] = maxIdleTime
+
 
 	if cstr != "" {
 		cmdConfig[Compress], _ = strconv.ParseBool(cstr)

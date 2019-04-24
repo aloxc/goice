@@ -2,14 +2,23 @@ package ice
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/utils"
 	"github.com/siddontang/go-log/log"
+	"github.com/siddontang/go/sync2"
 	"net"
+	"sync"
 	"time"
 )
 
+
+var (
+	closedError   = errors.New("连接池正在关闭")
+	hasMoreError  = errors.New("没有可用连接了")
+	waitMoreError = errors.New("等待请求过多")
+)
 type Connection struct {
 	*net.TCPConn
 }
@@ -66,6 +75,121 @@ func Connect(network string, address string, timeout int) (*Connection, error) {
 	//c.init()
 	//return c, nil
 }
+
+type NewConnHook interface {
+	hook(conn *net.Conn) error
+}
+
+type Pool struct {
+	Network     string
+	Address     string
+	freeConns   []theConn
+	usingConns  []theConn
+	ConnTimout  int
+	MaxConn     int
+	idleConn    int
+	mux         sync.Mutex
+	maxIdle     int
+	MaxLifetime time.Duration
+	NewConnHook NewConnHook
+	closed      sync2.AtomicBool
+}
+type theConn struct {
+	net.Conn
+	startTime time.Time
+}
+
+
+func (this *Pool) Get() (*theConn, error) {
+	if this.closed.Get() {
+		return nil, closedError
+	}
+	//this.mux.Lock()
+	//defer this.mux.Unlock()
+	//log.Infof("free %d,using %d,max %d\n", len(this.freeConns), len(this.usingConns), this.MaxConn)
+	for {
+		if len(this.usingConns) < this.MaxConn { //创建或者取一个空闲的
+			if len(this.freeConns) == 0 { //创建一个连接
+				conn, err := net.DialTimeout(this.Network, this.Address, time.Duration(this.ConnTimout)*time.Second)
+				if err != nil {
+					return nil, err
+				}
+				if this.NewConnHook != nil {
+					err = this.NewConnHook.hook(&conn)
+				}
+				now := time.Now()
+				tConn := &theConn{
+					Conn:      conn,
+					startTime: now,
+				}
+				this.usingConns = append(this.usingConns, *tConn)
+				return tConn, err
+			} else { //取一个连接
+				tconn := this.freeConns[0]
+				startTime := tconn.startTime
+				if startTime.Add(this.MaxLifetime).After(time.Now()) {
+					this.usingConns = append(this.usingConns, tconn)
+					this.freeConns = this.freeConns[1:]
+					return &tconn, nil
+				} else { //要关闭该链接了
+					tconn.Close()
+					log.Info("连接过期了")
+					this.freeConns = this.freeConns[1:]
+					continue
+				}
+			}
+		} else if len(this.usingConns) == this.MaxConn { //所有都在使用中。只能等待或者返回
+			return nil, hasMoreError
+		}
+	}
+}
+
+func (this *Pool) Return(tconn *theConn) {
+	//this.mux.Lock()
+	//defer this.mux.Unlock()
+	this.freeConns = append(this.freeConns, *tconn)
+	//log.Info("归还", len(this.freeConns),this.freeConns)
+
+	for index, v := range this.usingConns {
+		//log.Info(v == conn)
+		if v == *tconn {
+			this.usingConns = append(this.usingConns[0:index], this.usingConns[index+1:]...)
+			break
+		}
+	}
+}
+//关闭尺子
+func (this *Pool) Close() {
+	this.closed.Set(true)
+	log.Info("准备关闭连接池")
+	for {
+		if len(this.usingConns) > 0 {
+			time.Sleep(time.Millisecond * 100)
+			log.Info(len(this.usingConns))
+			continue
+		} else {
+			break
+		}
+	}
+	log.Info("没有使用的连接了")
+	if len(this.usingConns) == 0 && len(this.freeConns) > 0 {
+		wait := sync.WaitGroup{}
+		wait.Add(len(this.freeConns))
+		for _, conn := range this.freeConns {
+			go func() {
+				conn.Close()
+				wait.Done()
+			}()
+		}
+		wait.Wait()
+	}
+	this.freeConns = nil
+	this.usingConns = nil
+	log.Info("关闭完毕")
+}
+
+
+
 func InitConnection(identity *Identity, name string, conn *net.Conn) {
 	//log.Info("连接后要发送一条head命令")
 	var facet string

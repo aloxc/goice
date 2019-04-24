@@ -27,6 +27,7 @@ const (
   -RetryCount int类型，连接超时、执行超时重试次数
   -MonitorPort int类型，web界面显示统计的端口，默认不开启，只有此设置后才开启
   -Heartbeat int类型，心跳监测间隔时间，单位秒，默认3秒
+  -MaxIdleTime int类型，连接池连接最大保持时间时间，单位秒，默认300秒
   -Balance int类型，负载均衡，1：随机，2：轮询，3：哈希，
   -Report int类型，报警功能，0：不报警，1：邮件，2：短信，3：两者
   -ConfigFile string，配置文件路径
