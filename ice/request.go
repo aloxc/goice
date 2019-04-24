@@ -80,9 +80,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	conn, err := curPool.Get()
 	defer func() {
 		curPool.Return(conn)
-		//log.Info("归还中", len(curPool.freeConns))
-		connPoolMap[this.name] = curPool
-		//tPool = curPool
+		connPoolMap[this.name] = curPool//不加这句话的话有bug，
 	}()
 	//直接使用连接的代码
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
