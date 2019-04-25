@@ -22,13 +22,14 @@ func TestGoiceChinese2() {
 	//测试通过aa
 	for i := 0; i < times; i++ {
 		request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "我", "你")
-		data, err := request.DoRequest(ice.ResponseType_String)
-		if err != nil {
-			log.Info(err)
-		}
-		if i%2000 == 0 {
-			log.Info(i, (time.Now().UnixNano()-start)/1000000, "  ", data)
-		}
+		//data,err := request.DoRequest(ice.ResponseType_String)
+		request.DoRequest(ice.ResponseType_String)
+		//if err != nil {
+		//	log.Info(err)
+		//}
+		//if i%2000 == 0 {
+		//	log.Info(i, (time.Now().UnixNano()-start)/1000000, "  ", data)
+		//}
 		//if showResult {
 		//	log.Info("请求结果", result)
 		//}
