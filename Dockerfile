@@ -1,4 +1,4 @@
-FROM alpine
+FROM ubuntu
 LABEL maintainer="leerohwa@gmail.com"
 LABEL add="https://github.com/aloxc/gobanner"
 LABEL version="1.0"
