@@ -178,3 +178,20 @@ ice服务器端（java）是通过nio实现的高并发的，它没有使用任�
 | 3.7.2    | win7 64bit   | 通过         | 无                                                   |
 | 3.6.4    | win7 64bit   | 通过         | 无                                                   |
 | 3.5     | win7 64bit      |           |    无                              | 
+
+测试方法，可在本地自己搭建，也可以直接放到docker中，测试的两个服务端节点和一个客户端节点运行在同一个主机上的三个不同容器中，
+docker测试环境搭建方法：
+> 只需要本工程下面的docker-compose.yaml文件，然后在运行了docker服务的主机上执行 docker-compose up即可看测试结果。
+
+本地测试环境搭建方法：
+- 1.在充当服务器的机器上安装jre8及以上（当然jdk也可以）
+- 2.在充当客户端的机器上安装golang（推荐1.12以上）
+- 3.在服务器上执行java -jar goice372.jar
+- 4.把example/server/java/ice3.7.2/dockerfile/goice/goice372.jar保存到服务器上
+- 5.把example/server/java/ice3.7.2/dockerfile/userpost/userpost372.jar保存到服务器上
+- 6.把整个工程文件下载保存到客户端机器上
+- 7.在服务器上执行java -jar userpost372.jar
+- 8.在服务器上执行java -jar goice372.jar
+- 9.在客户端机器上执行go build
+- 10.在客户端机器上执行goice
+

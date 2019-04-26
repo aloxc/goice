@@ -18,13 +18,13 @@ func main() {
 	cli.Run()
 	time.Sleep(time.Second * 2)
 
-	//TestGoiceChinese2()
+	TestGoiceChinese2()
 	TestUserpostChinese2()
 }
 func TestUserpostChinese2() {
 	log.Info("进入到Userpost测试代码中")
 	start := time.Now().UnixNano()
-	var times = 300
+	var times = 300000
 	//测试通过aa
 
 	for i := 0; i < times; i++ {

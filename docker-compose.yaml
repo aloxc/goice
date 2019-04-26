@@ -2,23 +2,24 @@ version: '3'
 services:
   GoiceIce:
     image: aloxc/goicesrv
+    container_name: gosrv
     ports:
       - 1888:1888
 
   UserPostIce:
     image: aloxc/userpostsrv
+    container_name: usersrv
     ports:
       - 1889:1889
 
   goiceclient:
-    image: aloxc/goice
+    image: aloxc/goiceclient
+    container_name: goiceclient
     environment:
       IN_DOCKER: y
     depends_on:
       - GoiceIce
       - UserPostIce
-    volumes:
-      - /golang/gopath/src/github.com/aloxc/goice/:/root/goice/
     links:
       - GoiceIce:GoiceIce
       - UserPostIce:UserPostIce
