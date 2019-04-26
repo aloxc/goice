@@ -47,7 +47,7 @@ func (this *Command) Run() {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
-	var configFile = "config/config.yaml"
+	var configFile = ""
 	if len(os.Args) > 1 && (os.Args[1] == "--ConfigFile" || os.Args[1] == "-ConfigFile" || os.Args[1] == "ConfigFile") {
 		configFile = os.Args[2]
 	}

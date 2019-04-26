@@ -4,22 +4,21 @@ services:
     image: aloxc/goicesrv
     ports:
       - 1888:1888
-    network_mode: bridge
 
   UserPostIce:
     image: aloxc/userpostsrv
     ports:
       - 1889:1889
-    network_mode: bridge
 
   goiceclient:
     image: aloxc/goice
     environment:
-      - IN_DOCKER : true
+      IN_DOCKER: y
     depends_on:
       - GoiceIce
       - UserPostIce
-    network_mode: bridge
+    volumes:
+      - /golang/gopath/src/github.com/aloxc/goice/:/root/goice/
     links:
-      - GoiceIce: GoiceIce
-      - UserPostIce: UserPostIce
+      - GoiceIce:GoiceIce
+      - UserPostIce:UserPostIce

@@ -90,8 +90,10 @@ func (this *Pool) Get() (*theConn, error) {
 	for {
 		if len(this.usingConns) < this.MaxConn { //创建或者取一个空闲的
 			if len(this.freeConns) == 0 { //创建一个连接
+				log.Info("连接信息：",this.Network,"://",this.Address)
 				conn, err := net.DialTimeout(this.Network, this.Address, time.Duration(this.ConnTimout)*time.Second)
 				if err != nil {
+					log.Info("连接出错",err)
 					return nil, err
 				}
 				if this.NewConnHook != nil {

@@ -153,12 +153,12 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	}
 	buf.Flush()
 
-	errAndData := make(chan *reqeustErrorAndData)
-	go doResult(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
-	//return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
-	go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, this.OperateTimeout, this.Params, errAndData)
-	ed := <-errAndData
-	return ed.data, ed.err
+	return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
+	//errAndData := make(chan *reqeustErrorAndData)
+	//go doResult(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
+	//go requestTimeoutMonitor(conn.RemoteAddr().String(), this.Operation, this.OperateTimeout, this.Params, errAndData)
+	//ed := <-errAndData
+	//return ed.data, ed.err
 
 }
 func NewIceRequest(name string, mode OperationMode, operator string, context map[string]string, params ...interface{}) *IceRequest {
@@ -189,7 +189,7 @@ func (this *IceRequest) getPool(name string) (Pool, error) {
 				Address: config.ConfigMap[name][config.Address].(string),
 				NewConnHook: &IceNewConnHook{
 					Identity: GetIdentity(config.ConfigMap[name][config.Name].(string), ""),
-					Name:     config.ConfigMap[name][config.Name].(string),
+					Name:     this.name,
 				},
 				MaxConn:     config.ConfigMap[name]["MaxClientSize"].(int),
 				MaxLifetime: time.Duration(config.ConfigMap[name][config.MaxIdleTime].(int))*time.Second ,
@@ -362,6 +362,9 @@ func doResult(address string, rw io.ReadWriter, responseType ResponseType, opera
 	//log.Info("最终数据长度及数据 的长度", lastSize)
 	//TODO 这些还要处理数组问题
 	if responseType == ResponseType_String {
+		if lastSize == 0 {
+			return
+		}
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		_, offset := readSize(data)
@@ -398,7 +401,6 @@ func doResult(address string, rw io.ReadWriter, responseType ResponseType, opera
 		}
 		return
 	} else if responseType == ResponseType_Bool_Array { //通过
-		log.Info(lastSize)
 		data := make([]byte, lastSize)
 		size, err = rw.Read(data)
 		size, offset := readSize(data)
@@ -816,17 +818,19 @@ func doResultDirect(address string, rw io.ReadWriter, responseType ResponseType,
 }
 
 //请求超时monitor
-func requestTimeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
-	if showResult {
-		log.Info("启动超时监控启动")
-	}
-	<-time.After(time.Duration(timeout) * time.Second)
-	errAndData <- &reqeustErrorAndData{
-		err:  NewTimeoutError(address, operator, timeout, params),
-		data: nil,
-	}
-	log.Info("超时完成")
-}
+//func requestTimeoutMonitor(address, operator string, timeout int, params interface{}, errAndData chan *reqeustErrorAndData) {
+//	if showResult {
+//		log.Info("启动超时监控启动")
+//	}
+//	<-time.After(time.Duration(timeout) * time.Second)
+//	panic(NewTimeoutError(address, operator, timeout, params))
+//	os.Exit(0)
+//	errAndData <- &reqeustErrorAndData{
+//		err:  NewTimeoutError(address, operator, timeout, params),
+//		data: nil,
+//	}
+//	log.Info("超时完成")
+//}
 //读取数据长度或者数组长度
 func readSize(data []byte) (size, offset int) {
 	offset = 0
@@ -869,7 +873,8 @@ func (this*IceNewConnHook)hook(conn *net.Conn) error{
 	var facet string
 	rw := bufio.NewReadWriter(bufio.NewReader(*conn), bufio.NewWriter(*conn))
 	var buf = NewIceBuff(rw)
-
+	log.Info("this.name ",this.Name)
+	log.Info("config.Module ",config.Module)
 	total, real := PrepareHead(this.Identity, "", config.ConfigMap[this.Name][config.Module].(string), nil)
 
 	var context map[string]string

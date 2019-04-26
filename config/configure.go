@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -56,10 +58,11 @@ var (
 )
 
 func ReadConfig(configFile string) {
-	log.Info("开始读取配置")
 	if configFile == "" {
-		configFile = "config/config.yaml"
+		configFile = getCurrentPath() + "config/config.yaml"
 	}
+	log.Info("开始读取配置,配置文件路径 ", configFile)
+
 	cfg, err := ParseYamlFile(configFile)
 	if err != nil {
 		fmt.Println("读取配置文件发生异常，请查看配置路径是否正确，格式是否正确")
@@ -127,11 +130,12 @@ func ReadConfig(configFile string) {
 		cmdConfig[Compress], _ = strconv.ParseBool(cstr)
 	}
 	var inDocker string = os.Getenv("IN_DOCKER")
-
+	log.Info("in_docker=" + inDocker)
 	servers, err := cfg.List("servers")
 	for _, server := range servers {
 		mp := server.(map[string]interface{})
 		for k1, n1 := range mp {
+			log.Info("key : " ,k1)
 			n1m := n1.(map[string]interface{})
 			mp2 := make(map[ConfigNodeName]interface{})
 			for defaultKey, defaultValue := range defaultConfig {
@@ -169,7 +173,7 @@ func ReadConfig(configFile string) {
 				}
 			}
 			//读取环境变量，让其支持docker环境，
-			if strings.Contains(inDocker,"true"){
+			if strings.Contains(inDocker,"y"){
 				port := strings.Split(mp2[Address].(string), ":")[1]
 				mp2[Address] = k1 + ":" +port
 			}
@@ -190,7 +194,18 @@ func PrintConfig() {
 	}
 	fmt.Println(str)
 }
-
+func getCurrentPath() string {
+	s, _ := exec.LookPath(os.Args[0])
+	var sep = ""
+	if strings.Contains(runtime.GOOS,"windows"){
+		sep = "\\"
+	}else{
+		sep = "/"
+	}
+	i := strings.LastIndex(s, sep)
+	path := string(s[0 : i+1])
+	return path
+}
 // Config represents a configuration with convenient access methods.
 type Config struct {
 	Root    interface{}
