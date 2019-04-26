@@ -1,19 +1,25 @@
 version: '3'
 services:
-  goiceclient:
-    image: aloxc/goice
-    depends_on:
-      - goicesrv
-      - userpostsrv
-
-  goicesrv:
+  GoiceIce:
     image: aloxc/goicesrv
-    command: -t
     ports:
       - 1888:1888
+    network_mode: bridge
 
-  userpostsrv:
+  UserPostIce:
     image: aloxc/userpostsrv
-    command: -t
     ports:
       - 1889:1889
+    network_mode: bridge
+
+  goiceclient:
+    image: aloxc/goice
+    environment:
+      - IN_DOCKER : true
+    depends_on:
+      - GoiceIce
+      - UserPostIce
+    network_mode: bridge
+    links:
+      - GoiceIce: GoiceIce
+      - UserPostIce: UserPostIce

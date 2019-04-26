@@ -126,7 +126,8 @@ func ReadConfig(configFile string) {
 	if cstr != "" {
 		cmdConfig[Compress], _ = strconv.ParseBool(cstr)
 	}
-	//inDocker := os.Getenv("IN_DOCKER")
+	var inDocker string = os.Getenv("IN_DOCKER")
+
 	servers, err := cfg.List("servers")
 	for _, server := range servers {
 		mp := server.(map[string]interface{})
@@ -168,11 +169,10 @@ func ReadConfig(configFile string) {
 				}
 			}
 			//读取环境变量，让其支持docker环境，
-			//if inDocker == "true"{
-			//	port := strings.Split(mp2[Address].(string), ":")[1]
-			//	mp2[Address] = k1 + ":" +port
-			//
-			//}
+			if strings.Contains(inDocker,"true"){
+				port := strings.Split(mp2[Address].(string), ":")[1]
+				mp2[Address] = k1 + ":" +port
+			}
 			ConfigMap[k1] = mp2
 		}
 	}

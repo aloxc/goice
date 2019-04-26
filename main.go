@@ -23,7 +23,7 @@ func TestGoiceChinese2() {
 	var times = 100000
 	//测试通过aa
 	for i := 0; i < times; i++ {
-		request := ice.NewIceRequest("Goice", ice.OperatorModeNormal, "two", nil, "我", "你")
+		request := ice.NewIceRequest("GoiceIce", ice.OperatorModeNormal, "two", nil, "我", "你")
 		//data,err := request.DoRequest(ice.ResponseType_String)
 		request.DoRequest(ice.ResponseType_String)
 		//if err != nil {
