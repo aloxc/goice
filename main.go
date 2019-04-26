@@ -12,11 +12,13 @@ import (
 var ConnIce net.Conn
 
 func main() {
+	log.Info("准备允许客户端")
 	cli := command.Command{}
 	cli.Run()
 	TestGoiceChinese2()
 }
 func TestGoiceChinese2() {
+	log.Info("进入到测试代码中")
 	start := time.Now().UnixNano()
 	var times = 100000
 	//测试通过aa
