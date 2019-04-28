@@ -7,7 +7,7 @@ import (
 	_ "github.com/aloxc/goice/monitor/modules"
 	_ "github.com/aloxc/goice/monitor/routers"
 	"github.com/astaxie/beego"
-	"github.com/siddontang/go-log/log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
 )

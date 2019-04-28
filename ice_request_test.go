@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/ice"
-	"github.com/siddontang/go/log"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	"testing"
 	"time"

@@ -2,7 +2,7 @@ package ice
 
 import (
 	"errors"
-	"github.com/siddontang/go-log/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/siddontang/go/sync2"
 	"net"
 	"sync"

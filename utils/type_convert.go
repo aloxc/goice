@@ -85,15 +85,12 @@ func Int32ToBytes(n int32) []byte {
 //字节转换成整形
 func BytesToInt32(b []byte) int32 {
 	bytesBuffer := bytes.NewBuffer(b)
-
 	var x int32
 	binary.Read(bytesBuffer, binary.LittleEndian, &x)
-
 	return x
 }
 func BytesToInt64(b []byte) int64 {
 	bytesBuffer := bytes.NewBuffer(b)
-
 	var x int64
 	binary.Read(bytesBuffer, binary.LittleEndian, &x)
 	return x

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/aloxc/goice/config"
 	"github.com/aloxc/goice/utils"
-	"github.com/siddontang/go/log"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"sync"
@@ -68,6 +68,7 @@ type IceRequest struct {
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
 func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error) {
+	var startTime = time.Now().UnixNano()
 	//var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
@@ -105,6 +106,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	//this.writeParams(buf)
 	//log.Info("参数类型", reflect.TypeOf(this.Params))
 	//os.Exit(1)
+	var statMethod = this.Operation
 	if this.Params != nil {
 		for _, param := range this.Params.([]interface{}) {
 			switch param.(type) {
@@ -148,11 +150,14 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 				request := param.(*Request)
 				buf.WriteStr(request.Method)
 				buf.WriteStringMap(request.Params)
+				statMethod += "-" + request.Method
 			}
 		}
 	}
 	buf.Flush()
-
+	go func() {
+		Add(this.name,statMethod,time.Now().UnixNano() - startTime)
+	}()
 	return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
 	//errAndData := make(chan *reqeustErrorAndData)
 	//go doResult(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params, errAndData)
