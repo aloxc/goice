@@ -2,28 +2,42 @@ version: '3'
 services:
   GoiceIce:
     image: aloxc/goicesrv
-    container_name: gosrv
+    networks:
+      - goicenetwork
     deploy:
+      mode: replicated
       replicas: 3
-    ports:
-      - 1888:1888
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        update_config:
+          parallelism: 1
 
   UserPostIce:
     image: aloxc/userpostsrv
-    container_name: usersrv
-    ports:
-      - 1889:1889
-
+    networks:
+      - goicenetwork
+        
   goiceclient:
     image: aloxc/goiceclient
-    container_name: goiceclient
     environment:
       IN_DOCKER: y
+    networks:
+      - goicenetwork
     deploy:
       delay: 5s
+      mode: global
+        placement:
+          constraints:
+            - node.role == manager
     depends_on:
       - GoiceIce
       - UserPostIce
     links:
       - GoiceIce:GoiceIce
       - UserPostIce:UserPostIce
+
+networks:
+  goicenetwork:
+    driver: overlay
