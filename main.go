@@ -67,9 +67,8 @@ func TestGoiceChinese2() {
 				log.Info(i, (time.Now().UnixNano()-start)/1000000, "  ", data)
 			}
 		} else {
-			if i%100 == 0 {
 				log.Info(i, (time.Now().UnixNano()-start)/1000000, "  ", data)
-			}
+				time.Sleep(time.Millisecond *300)
 		}
 	}
 	log.Infof("执行goice[%d]，花费[%d]秒\n", times, (time.Now().UnixNano()-start)/1000000000)
