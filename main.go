@@ -17,6 +17,7 @@ func init() {
 	log.SetOutput(os.Stdout)
 	//日志设置为warn级别以上
 	log.SetLevel(log.TraceLevel)
+
 }
 
 func main() {
@@ -50,7 +51,7 @@ func TestUserpostChinese2() {
 func TestGoiceChinese2() {
 	log.Info("进入到goice测试代码中")
 	start := time.Now().UnixNano()
-	var times = 300000
+	var times = 3000000
 	//测试通过aa
 	for i := 0; i < times; i++ {
 		request := ice.NewIceRequest("GoiceIce", ice.OperatorModeNormal, "two", nil, "我", "你")
