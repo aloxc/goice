@@ -46,6 +46,7 @@ const (
 )
 
 var (
+	UsingConnPool = false
 	HttpPort   = 0                                               // monitor web ui端口
 	ReportType = 0                                               //报警类型
 	ConfigMap  = make(map[string]map[ConfigNodeName]interface{}) //保存配置

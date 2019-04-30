@@ -3,6 +3,8 @@ services:
   GoiceIce:
     image: aloxc/goicesrv
     container_name: gosrv
+    deploy:
+      replicas: 3
     ports:
       - 1888:1888
 
@@ -17,6 +19,8 @@ services:
     container_name: goiceclient
     environment:
       IN_DOCKER: y
+    deploy:
+      delay: 5s
     depends_on:
       - GoiceIce
       - UserPostIce

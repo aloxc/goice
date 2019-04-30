@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 )
+
 type Request struct {
 	Method string
 	Params map[string]string
@@ -63,7 +64,7 @@ type IceRequest struct {
 	Context         map[string]string //调用上下文 zz 字节
 	encodingVersion *EncodingVersion  // 2 字节
 	Params          interface{}
-	OperateTimeout int
+	OperateTimeout  int
 }
 
 //准备把所有设置都放到这个方法中，先Prepare下，然后再调用组装数据的，最后就是执行this.Flush
@@ -72,17 +73,22 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	//var timeout int = 5
 	atomic.AddInt32(&requestId, 1)
 	this.requestId = int(requestId)
-	curPool, err := this.getPool(this.name)
-	if err != nil { //如果连接失败。则返回。
-		log.Error(err)
-		return nil, err
-	}
 	//log.Info("剩余", len(curPool.freeConns),curPool,curPool.freeConns)
-	conn, err := curPool.Get()
-	defer func() {
-		curPool.Return(conn)
-		connPoolMap[this.name] = curPool//不加这句话的话有bug，
-	}()
+	var conn *theConn
+	if config.UsingConnPool {
+		curPool, err := this.getPool(this.name)
+		if err != nil { //如果连接失败。则返回。
+			log.Error(err)
+			return nil, err
+		}
+		conn, err := curPool.Get()
+		defer func() {
+			curPool.Return(conn)
+			connPoolMap[this.name] = curPool //不加这句话的话有bug，
+		}()
+	}else{
+		conn,err = Connect("tcp4",config.ConfigMap[this.name][config.Address].(string),5)
+	}
 	//直接使用连接的代码
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	var buf = NewIceBuff(rw)
@@ -156,7 +162,7 @@ func (this *IceRequest) DoRequest(responseType ResponseType) (interface{}, error
 	}
 	buf.Flush()
 	go func() {
-		Add(this.name,statMethod,time.Now().UnixNano() - startTime)
+		Add(this.name, statMethod, time.Now().UnixNano()-startTime)
 	}()
 	return doResultDirect(conn.RemoteAddr().String(), rw, responseType, this.Operation, this.Params)
 	//errAndData := make(chan *reqeustErrorAndData)
@@ -176,7 +182,7 @@ func NewIceRequest(name string, mode OperationMode, operator string, context map
 		Params:          params,
 		Identity:        GetIdentity(config.ConfigMap[name][config.IdentityName].(string), ""),
 		Context:         context,
-		OperateTimeout:config.ConfigMap[name][config.OperateTimeout].(int),
+		OperateTimeout:  config.ConfigMap[name][config.OperateTimeout].(int),
 	}
 }
 
@@ -197,7 +203,7 @@ func (this *IceRequest) getPool(name string) (Pool, error) {
 					Name:     this.name,
 				},
 				MaxConn:     config.ConfigMap[name]["MaxClientSize"].(int),
-				MaxLifetime: time.Duration(config.ConfigMap[name][config.MaxIdleTime].(int))*time.Second ,
+				MaxLifetime: time.Duration(config.ConfigMap[name][config.MaxIdleTime].(int)) * time.Second,
 			}
 			connPoolMap[name] = curPool
 		}
@@ -869,23 +875,25 @@ func readStringArray(data []byte) (arr []string) {
 	}
 	return
 }
+
 type IceNewConnHook struct {
 	Identity *Identity
-	Name string
+	Name     string
 }
-func (this*IceNewConnHook)hook(conn *net.Conn) error{
+
+func (this *IceNewConnHook) hook(conn *net.Conn) error {
 	log.Info("开始执行hook = ", atomic.AddInt32(&count, 1))
 	var facet string
 	rw := bufio.NewReadWriter(bufio.NewReader(*conn), bufio.NewWriter(*conn))
 	var buf = NewIceBuff(rw)
-	log.Info("this.name ",this.Name)
-	log.Info("config.Module ",config.Module)
+	log.Info("this.name ", this.Name)
+	log.Info("config.Module ", config.Module)
 	total, real := PrepareHead(this.Identity, "", config.ConfigMap[this.Name][config.Module].(string), nil)
 
 	var context map[string]string
 	var head, data []byte
 	var err error
-	buf.Write(*GetConnHead())                     // 10字节
+	buf.Write(*GetConnHead())                         // 10字节
 	buf.Write(utils.IntToBytes(total))                //size 10 +4 = 14
 	buf.Write(utils.IntToBytes(1))                    //requestId 14+4=18
 	buf.WriteStr(this.Identity.GetIdentityName())     //18+1+8=27
@@ -897,7 +905,7 @@ func (this*IceNewConnHook)hook(conn *net.Conn) error{
 		facets := []string{facet}
 		buf.WriteStringArray(facets)
 	}
-	buf.WriteStr(string(config.Ice_isA))             //29+1+7=37
+	buf.WriteStr(string(config.Ice_isA))         //29+1+7=37
 	buf.WriteByte(byte(OperatorModeNonmutating)) //37+1=38
 	context = make(map[string]string)
 	buf.WriteStringMap(context) //38+1=39
