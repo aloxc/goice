@@ -1,3 +1,4 @@
+# some config default values
 default:
   OperateTimeout: 2
   ConnectTimeout: 200
@@ -11,7 +12,7 @@ default:
   MonitorPort: 0
   Heartbeat: 3
   RetryCount: 3
-
+# server list，
 servers:
   - GoiceIce:
       MaxClientSize: 500
