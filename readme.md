@@ -158,7 +158,7 @@ Params
 注意：不支持响应是自定义数据类型的请求，如果想要支持，需要自己写解析代码，要写到IceRequest.DoRequest(...)和IceBuffer.Prepare(...)方法中
 
 记录下：
-如果分析icq请求，我们可以开个java客户端去连接ice服务器端，
+如果分析ice请求，我们可以开个java客户端去连接ice服务器端，
 ice客户端请求出站一般看XXXPrxHelper,比如说我们测试的GoicePrxHelp,
 然后在里面搜索我们测试的方法，就可以顺藤摸瓜找请求流程及编码方式了
 
